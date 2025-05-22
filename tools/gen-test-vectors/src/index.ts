@@ -86,7 +86,7 @@ async function main() {
       console.assert(check.is(createOp, def.operation), "createOp is not valid");
       ops.push(createOp);
       did = await didForCreateOp(createOp);
-      await writeFile("did-creation", createOp);
+      await writeFile("1-did-creation", createOp);
   }
 
   {
@@ -94,7 +94,7 @@ async function main() {
     handle = `at://${noPrefix}`;
     const op = await updateHandleOp(lastOp(), rotationKey1, noPrefix);
     ops.push(op);
-    await writeFile("update-handle", op);
+    await writeFile("2-update-handle", op);
   }
 
   {
@@ -102,7 +102,7 @@ async function main() {
     atpPds = `https://${noPrefix}`;
     const op = await updatePdsOp(lastOp(), rotationKey1, noPrefix);
     ops.push(op);
-    await writeFile("update-pds", op);
+    await writeFile("3-update-pds", op);
   }
 
   {
@@ -113,7 +113,7 @@ async function main() {
       newSigningKey.did(),
     );
     ops.push(op);
-    await writeFile("update-atproto-key", op);
+    await writeFile("4-update-atproto-key", op);
     signingKey = newSigningKey;
   }
 
@@ -127,7 +127,7 @@ async function main() {
 
     oldRotationKey1 = rotationKey1;
     rotationKey1 = newRotationKey;
-    await writeFile("update-rotation-keys", op);
+    await writeFile("5-update-rotation-keys", op);
   }
 
   {
@@ -135,7 +135,7 @@ async function main() {
     const op = await updateHandleOp(lastOp(), rotationKey2, newHandle);
     ops.push(op);
     handle = newHandle;
-    await writeFile("update-handle", op);
+    await writeFile("6-update-handle", op);
   }
 
   // finally verify all operations

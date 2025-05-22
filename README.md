@@ -1,1 +1,7 @@
-# ckb-did-plc-utils
+# ckb-did-plc-utils2
+
+TODO: Write this readme
+
+*This project was bootstrapped with [ckb-script-templates].*
+
+[ckb-script-templates]: https://github.com/cryptape/ckb-script-templates

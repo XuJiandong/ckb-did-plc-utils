@@ -1,0 +1,14 @@
+[package]
+name = "ckb-did-plc-utils"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+cbor4ii = { version = "1.0.0", features = ["use_alloc"] }
+unsigned-varint = { version = "0.8.0" }
+multibase = { version ="0.9", default-features = false }
+base64 = {version = "0.22.1", default-features = false, features = ["alloc"] }
+base32 = { version = "0.5.1" }
+sha2 = { version = "0.10.9",default-features = false }
+k256 = { version = "0.13.4", default-features = false, features = ["arithmetic", "ecdsa", "alloc"] }
+p256 = { version = "0.13.2", default-features = false, features = ["arithmetic", "ecdsa", "alloc"] }
