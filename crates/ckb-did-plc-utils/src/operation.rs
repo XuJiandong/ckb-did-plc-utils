@@ -197,6 +197,10 @@ impl Operation {
             for (k, v) in map {
                 if let (Value::Text(key), Value::Text(value)) = (k, v) {
                     if key == "sig" {
+                        // https://github.com/did-method-plc/did-method-plc/blob/bd5825589a34d1abb377943389ac3838a15cd110/packages/lib/src/operations.ts#L268
+                        if value.ends_with("=") {
+                            return Err(Error::InvalidSignaturePadding);
+                        }
                         let engine = base64::engine::general_purpose::URL_SAFE_NO_PAD;
                         let decoded_sig =
                             engine.decode(value).map_err(|_| Error::InvalidSignature)?;

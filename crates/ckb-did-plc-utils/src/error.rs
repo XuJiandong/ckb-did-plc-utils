@@ -4,4 +4,5 @@ pub enum Error {
     RotationKeysDecodeError,
     InvalidKey,
     InvalidSignature,
+    InvalidSignaturePadding,
 }
