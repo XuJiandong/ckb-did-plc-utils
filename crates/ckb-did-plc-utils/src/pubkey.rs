@@ -10,6 +10,10 @@ pub(crate) struct PublicKey {
 }
 
 impl PublicKey {
+    #[allow(dead_code)]
+    pub(crate) fn raw(&self) -> &[u8] {
+        &self.pubkey
+    }
     pub(crate) fn from_str(key: &str) -> Result<Self, Error> {
         if !key.starts_with("did:key:") {
             return Err(Error::InvalidKey);
@@ -32,7 +36,7 @@ impl PublicKey {
             is_secp256k1,
         })
     }
-    pub fn verify(&self, msg: &[u8], sig: &[u8]) -> Result<(), Error> {
+    pub(crate) fn verify(&self, msg: &[u8], sig: &[u8]) -> Result<(), Error> {
         if self.is_secp256k1 {
             use k256::ecdsa::signature::Verifier;
             let sig =
@@ -41,7 +45,7 @@ impl PublicKey {
                 .map_err(|_| Error::InvalidKey)?;
             pubkey
                 .verify(msg, &sig)
-                .map_err(|_| Error::InvalidSignature)?;
+                .map_err(|_| Error::InvalidSignature)
         } else {
             use p256::ecdsa::signature::Verifier;
             let sig =
@@ -50,8 +54,7 @@ impl PublicKey {
                 .map_err(|_| Error::InvalidKey)?;
             pubkey
                 .verify(msg, &sig)
-                .map_err(|_| Error::InvalidSignature)?;
+                .map_err(|_| Error::InvalidSignature)
         }
-        Ok(())
     }
 }

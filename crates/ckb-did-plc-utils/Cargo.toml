@@ -1,14 +1,31 @@
 [package]
 name = "ckb-did-plc-utils"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
+description = "Utilities for CKB DID PLC operations"
+license = "MIT"
+rust-version = "1.85"
+keywords = ["ckb", "did", "plc"]
+categories = ["cryptography", "no-std"]
+
+[features]
+default = []
+std = []
+enable_log = ["std", "log", "hex"]
 
 [dependencies]
+# Encoding and serialization
 cbor4ii = { version = "1.0.0", features = ["use_alloc"] }
-unsigned-varint = { version = "0.8.0" }
-multibase = { version ="0.9", default-features = false }
-base64 = {version = "0.22.1", default-features = false, features = ["alloc"] }
-base32 = { version = "0.5.1" }
-sha2 = { version = "0.10.9",default-features = false }
+unsigned-varint = "0.8.0"
+multibase = { version = "0.9", default-features = false }
+base64 = { version = "0.22.1", default-features = false, features = ["alloc"] }
+base32 = "0.5.1"
+
+# Cryptography
+sha2 = { version = "0.10.9", default-features = false }
 k256 = { version = "0.13.4", default-features = false, features = ["arithmetic", "ecdsa", "alloc"] }
 p256 = { version = "0.13.2", default-features = false, features = ["arithmetic", "ecdsa", "alloc"] }
+
+# Optional dependencies
+log = { version = "0.4.27", optional = true }
+hex = { version = "0.4.3", optional = true }

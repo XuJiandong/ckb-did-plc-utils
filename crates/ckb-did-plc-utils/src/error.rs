@@ -5,4 +5,8 @@ pub enum Error {
     InvalidKey,
     InvalidSignature,
     InvalidSignaturePadding,
+    VerifySignatureFailed,
+    InvalidPrev,
+    NotGenesisOperation,
+    DidMismatched,
 }
