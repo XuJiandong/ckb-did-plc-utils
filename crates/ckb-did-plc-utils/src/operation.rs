@@ -124,8 +124,6 @@ impl Operation {
                 if let (Value::Text(key), Value::Text(value)) = (k, v) {
                     if key == "type" && value == "plc_operation" {
                         return true;
-                    } else {
-                        return false;
                     }
                 }
             }
@@ -328,7 +326,11 @@ pub fn validate_2_operations(prev_buf: &[u8], cur_buf: &[u8]) -> Result<(), Erro
         }
         return Err(Error::InvalidPrev);
     }
-    let rotation_keys = prev_op.get_rotation_keys()?;
+    let rotation_keys = if prev_op.is_legacy() {
+        prev_op.get_legacy_rotation_keys()?
+    } else {
+        prev_op.get_rotation_keys()?
+    };
     cur_op.verify_signature(&rotation_keys)?;
     Ok(())
 }

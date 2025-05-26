@@ -75,6 +75,14 @@ async function writeFile(name: string, op: CompatibleOpOrTombstone) {
   console.log(`test vector (${name}) written to ${filePath}`);
 }
 
+async function writeDidFile(name: string, did: string) {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+  let filePath = path.join(__dirname, "../test-vectors/" + name + ".did");
+  writeFileSync(filePath, did);
+  console.log(`DID (${did}) written to ${filePath}`);
+}
+
 function dumpOperationMeta(msg: string, prevOp: Operation, op: Operation) {
   if (!enableLog) {
     return;
@@ -168,6 +176,7 @@ async function main() {
     ops.push(createOp);
     did = await didForCreateOp(createOp);
     await writeFile("1-did-creation", createOp);
+    writeDidFile("creation", did);
   }
 
   {
@@ -260,6 +269,7 @@ async function main() {
     did = await didForCreateOp(legacyOp);
     ops.push(legacyOp);
     await writeFile("1-did-creation-legacy", legacyOp);
+    writeDidFile("creation-legacy", did);
   }
 
   {
