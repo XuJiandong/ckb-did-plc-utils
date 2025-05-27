@@ -1,12 +1,25 @@
 use crate::error::Error;
 use alloc::vec::Vec;
-use multibase::decode;
+use multibase::Base::Base58Btc;
 
 pub(crate) struct PublicKey {
     // compressed public key
     pubkey: Vec<u8>,
     // if false, it is secp256r1
     is_secp256k1: bool,
+}
+
+// https://atproto.com/specs/cryptography
+// it only supports base58btc.
+pub fn decode_base58btc(input: &str) -> Result<Vec<u8>, Error> {
+    let code = input.chars().next().ok_or(Error::InvalidKey)?;
+    if code != 'z' {
+        return Err(Error::InvalidKey);
+    }
+    let decoded = Base58Btc
+        .decode(&input[code.len_utf8()..])
+        .map_err(|_| Error::InvalidKey)?;
+    Ok(decoded)
 }
 
 impl PublicKey {
@@ -19,8 +32,7 @@ impl PublicKey {
             return Err(Error::InvalidKey);
         }
         let key = key.split_at(8).1;
-        // TODO: improve it with base58btc only, reduce code size
-        let (_, raw_pubkey) = decode(key).map_err(|_| Error::InvalidKey)?;
+        let raw_pubkey = decode_base58btc(key)?;
         let is_secp256k1 = raw_pubkey[0] == 0xE7 && raw_pubkey[1] == 0x01;
         if !is_secp256k1 {
             if raw_pubkey[0] != 0x80 || raw_pubkey[1] != 0x24 {
