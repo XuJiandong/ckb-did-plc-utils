@@ -3,6 +3,7 @@
 use std::{fs::read, vec::Vec};
 
 use ckb_did_plc_utils::{
+    base32::{self, Alphabet},
     base64::{
         self,
         engine::{Engine, general_purpose::URL_SAFE_NO_PAD},
@@ -34,7 +35,13 @@ fn load_did(name: &str) -> String {
 }
 
 fn get_test_vector_path(filename: &str) -> String {
-    format!("../../tools/gen-test-vectors/test-vectors/{}", filename)
+    format!("../tools/gen-test-vectors/test-vectors/{}", filename)
+}
+
+fn parse_did(did: &str) -> Vec<u8> {
+    let b32 = did.split("did:plc:").nth(1).unwrap();
+    let did = base32::decode(Alphabet::Rfc4648Lower { padding: false }, b32).unwrap();
+    did
 }
 
 #[test]
@@ -80,7 +87,7 @@ fn test_genesis_operation() {
     let genesis_path = get_test_vector_path("1-did-creation.cbor");
     let genesis_buf = read(&genesis_path).expect(&format!("Failed to read {}", genesis_path));
     let did = load_did("creation");
-    let result = validate_genesis_operation(&genesis_buf, did);
+    let result = validate_genesis_operation(&genesis_buf, &parse_did(&did));
     assert!(result.is_ok());
 }
 
@@ -88,7 +95,7 @@ fn test_genesis_operation() {
 fn test_genesis_operation_wrong_did() {
     let genesis_path = get_test_vector_path("1-did-creation.cbor");
     let genesis_buf = read(&genesis_path).expect(&format!("Failed to read {}", genesis_path));
-    let result = validate_genesis_operation(&genesis_buf, "did:plc:aaaaaa".to_owned());
+    let result = validate_genesis_operation(&genesis_buf, &vec![0; 15]);
     assert!(matches!(result, Err(Error::DidMismatched)));
 }
 
@@ -97,7 +104,7 @@ fn test_legacy_genesis_operation() {
     let genesis_path = get_test_vector_path("1-did-creation-legacy.cbor");
     let genesis_buf = read(&genesis_path).expect(&format!("Failed to read {}", genesis_path));
     let did = load_did("creation-legacy");
-    let result = validate_genesis_operation(&genesis_buf, did);
+    let result = validate_genesis_operation(&genesis_buf, &parse_did(&did));
     assert!(result.is_ok());
 }
 

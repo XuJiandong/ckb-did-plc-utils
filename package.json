@@ -1,7 +1,8 @@
 {
   "private": true,
   "workspaces": [
-    "tools/gen-test-vectors"
+    "tools/gen-test-vectors",
+    "ts-tests/ckb-did-plc-registry-tests"
   ],
   "scripts": {
     "build": "pnpm -r run build",
@@ -9,7 +10,7 @@
     "format": "pnpm -r run format",
     "check:format": "pnpm -r run check:format",
     "publish": "pnpm build && pnpm -r publish",
-    "test": "pnpm run test"
+    "test": "pnpm -r run test"
   },
   "devDependencies": {
     "@eslint/js": "~9.1.1",

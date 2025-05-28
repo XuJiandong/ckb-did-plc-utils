@@ -1,0 +1,13 @@
+[package]
+name = "ckb-did-plc-registry"
+version = "1.0.0"
+edition = "2024"
+
+[dependencies]
+ckb-std = { version = "0.17.2", default-features = false, features = ["ckb-types", "allocator", "ckb-types", "dummy-atomic"] }
+ckb-did-plc-utils = { path = "../../crates/ckb-did-plc-utils" }
+log = { version = "0.4", optional = true, default-features = false }
+
+[features]
+default = ["log"]
+log = ["dep:log", "ckb-std/log"]

@@ -1,2 +1,4 @@
 packages:
   - "tools/gen-test-vectors"
+  - "ts-tests/ckb-did-plc-registry-tests"
+
