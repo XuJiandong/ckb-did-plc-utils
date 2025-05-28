@@ -34,7 +34,7 @@ fn load_did(name: &str) -> String {
 }
 
 fn get_test_vector_path(filename: &str) -> String {
-    format!("../tools/gen-test-vectors/test-vectors/{}", filename)
+    format!("../../tools/gen-test-vectors/test-vectors/{}", filename)
 }
 
 #[test]
