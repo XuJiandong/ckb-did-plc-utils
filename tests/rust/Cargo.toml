@@ -1,0 +1,9 @@
+[package]
+name = "ckb-did-plc-utils-tests"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+
+[dependencies]
+ckb-did-plc-utils = { path = "../../crates/ckb-did-plc-utils", features = ["std"]}
