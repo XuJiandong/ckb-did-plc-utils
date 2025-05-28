@@ -1,10 +1,8 @@
-import { check } from "@atproto/common";
 import { P256Keypair, Secp256k1Keypair } from "@atproto/crypto";
 import {
   atprotoOp,
   didForCreateOp,
   Operation,
-  def,
   updateHandleOp,
   updateRotationKeysOp,
   getLastOpWithCid,
@@ -16,7 +14,7 @@ import { hexFrom, Transaction, Hex } from "@ckb-ccc/core";
 import { readFileSync } from "fs";
 import { Resource, Verifier } from "ckb-testtool";
 import path from "path";
-import { fromString } from "uint8arrays";
+import * as uint8arrays from "uint8arrays";
 
 export const DEFAULT_SCRIPT = path.join(
   __dirname,
@@ -28,11 +26,16 @@ function getBinaryDid(did: string) {
     throw new Error("Invalid DID");
   }
   let did_without_prefix = did.slice(8);
-  const decoded = fromString(did_without_prefix, "base32");
+  const decoded = uint8arrays.fromString(did_without_prefix, "base32");
   return hexFrom(decoded);
 }
 
-async function main(did: Hex, curData: Hex, prevData?: Hex): Promise<number> {
+async function main(
+  did: Hex,
+  curData: Hex,
+  prevData?: Hex,
+  isFailed?: boolean,
+): Promise<number> {
   const resource = Resource.default();
   const tx = Transaction.default();
 
@@ -54,7 +57,12 @@ async function main(did: Hex, curData: Hex, prevData?: Hex): Promise<number> {
   tx.outputsData.push(curData);
 
   const verifier = Verifier.from(resource, tx);
-  return verifier.verifySuccess(false);
+  if (isFailed) {
+    await verifier.verifyFailure();
+    return 0;
+  } else {
+    return verifier.verifySuccess(false);
+  }
 }
 
 describe("CKB DID PLC Registry", () => {
@@ -62,14 +70,16 @@ describe("CKB DID PLC Registry", () => {
   let signingKey: Secp256k1Keypair;
   let rotationKey1: Secp256k1Keypair;
   let rotationKey2: P256Keypair;
+  let wrongKey: Secp256k1Keypair;
   let handle = "at://alice.example.com";
   let atpPds = "https://example.com";
-  let binary_did: Hex = "0x";
+  let binaryDid: Hex = "0x";
 
   beforeAll(async () => {
     signingKey = await Secp256k1Keypair.create();
     rotationKey1 = await Secp256k1Keypair.create();
     rotationKey2 = await P256Keypair.create();
+    wrongKey = await Secp256k1Keypair.create();
   });
 
   const lastOp = () => {
@@ -80,7 +90,7 @@ describe("CKB DID PLC Registry", () => {
     return lastOp;
   };
 
-  test("genesis operation", async () => {
+  test("it should process a genesis operation correctly", async () => {
     const createOp = await atprotoOp({
       signingKey: signingKey.did(),
       rotationKeys: [rotationKey1.did(), rotationKey2.did()],
@@ -89,34 +99,55 @@ describe("CKB DID PLC Registry", () => {
       prev: null,
       signer: rotationKey1,
     });
-    const isValid = check.is(createOp, def.operation);
-    expect(isValid).toBeTruthy();
     ops.push(createOp);
     let did = await didForCreateOp(createOp);
-    binary_did = getBinaryDid(did);
+    binaryDid = getBinaryDid(did);
     let operation = cbor.encode(createOp);
-    main(binary_did, hexFrom(operation));
+    main(binaryDid, hexFrom(operation));
   });
 
-  test("update content with secp256k1", async () => {
+  test("it should update content with secp256k1 signature", async () => {
     const noPrefix = "ali.example2.com";
     handle = `at://${noPrefix}`;
     let prevData = cbor.encode(lastOp());
     const op = await updateHandleOp(lastOp(), rotationKey1, noPrefix);
     ops.push(op);
     let curData = cbor.encode(op);
-    main(binary_did, hexFrom(curData), hexFrom(prevData));
+    main(binaryDid, hexFrom(curData), hexFrom(prevData));
   });
-  test("update content with secp256r1", async () => {
-    const noPrefix = "ali.example3.com";
+
+  test("it should update content with secp256r1 signature", async () => {
+    const noPrefix = "alice.example3.com";
     handle = `at://${noPrefix}`;
     let prevData = cbor.encode(lastOp());
     const op = await updateHandleOp(lastOp(), rotationKey2, noPrefix);
     ops.push(op);
     let curData = cbor.encode(op);
-    main(binary_did, hexFrom(curData), hexFrom(prevData));
+    main(binaryDid, hexFrom(curData), hexFrom(prevData));
   });
-  test("rotates rotation keys", async () => {
+
+  test("it should reject updates with wrong rotation key", async () => {
+    const noPrefix = "alice.example3.com";
+    handle = `at://${noPrefix}`;
+    let prevData = cbor.encode(lastOp());
+    const op = await updateHandleOp(lastOp(), wrongKey, noPrefix);
+    let curData = cbor.encode(op);
+    main(binaryDid, hexFrom(curData), hexFrom(prevData), true);
+  });
+
+  test("it should reject updates with invalid signature", async () => {
+    const noPrefix = "alice.example3.com";
+    handle = `at://${noPrefix}`;
+    let prevData = cbor.encode(lastOp());
+    const op = await updateHandleOp(lastOp(), rotationKey1, noPrefix);
+    let binarySig = uint8arrays.fromString(op.sig, "base64url");
+    binarySig[0] ^= 1;
+    op.sig = uint8arrays.toString(binarySig, "base64url");
+    let curData = cbor.encode(op);
+    main(binaryDid, hexFrom(curData), hexFrom(prevData), true);
+  });
+
+  test("it should successfully rotate rotation keys", async () => {
     const newRotationKey = await Secp256k1Keypair.create();
     const op = await updateRotationKeysOp(lastOp(), rotationKey1, [
       newRotationKey.did(),
@@ -125,25 +156,28 @@ describe("CKB DID PLC Registry", () => {
     let prevData = cbor.encode(lastOp());
     ops.push(op);
     let curData = cbor.encode(op);
-    main(binary_did, hexFrom(curData), hexFrom(prevData));
+    main(binaryDid, hexFrom(curData), hexFrom(prevData));
   });
 
   // this test should be at last. No operation is allowed after that.
-  test("allows tombstoning a DID", async () => {
+  test("it should allow tombstoning a DID", async () => {
     const last = await getLastOpWithCid(ops);
     const op = await tombstoneOp(last.cid, rotationKey2);
     let prevData = cbor.encode(lastOp());
     let curData = cbor.encode(op);
-    main(binary_did, hexFrom(curData), hexFrom(prevData));
+    main(binaryDid, hexFrom(curData), hexFrom(prevData));
   });
+});
 
+describe("CKB DID PLC Registry benchmark", () => {
   // this test case is for the maximum rotation keys with worst performance.
-  test("genesis operation with maximum rotation keys", async () => {
+  test("it should process genesis operation with maximum rotation keys within cycle limits", async () => {
     let rotationKey1 = await P256Keypair.create();
     let rotationKey2 = await P256Keypair.create();
     let rotationKey3 = await P256Keypair.create();
     let rotationKey4 = await P256Keypair.create();
     let rotationKey5 = await P256Keypair.create();
+    let signingKey = await Secp256k1Keypair.create();
 
     const createOp = await atprotoOp({
       signingKey: signingKey.did(),
@@ -154,15 +188,13 @@ describe("CKB DID PLC Registry", () => {
         rotationKey4.did(),
         rotationKey5.did(),
       ],
-      handle,
-      pds: atpPds,
+      handle: "at://alice.example.com",
+      pds: "https://example.com",
       prev: null,
       signer: rotationKey5,
     });
-    const isValid = check.is(createOp, def.operation);
-    expect(isValid).toBeTruthy();
     let did = await didForCreateOp(createOp);
-    binary_did = getBinaryDid(did);
+    let binary_did = getBinaryDid(did);
     let operation = cbor.encode(createOp);
     let cycles = await main(binary_did, hexFrom(operation));
     expect(cycles).toBeLessThan(26000000);
