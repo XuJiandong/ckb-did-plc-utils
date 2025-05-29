@@ -89,15 +89,15 @@ impl Operation {
                 "prev",
                 "sig",
             ]) {
-                return Ok(());
+                Ok(())
             } else {
-                return Err(Error::InvalidOperation);
+                Err(Error::InvalidOperation)
             }
         } else if self.is_tombstone() {
             if self.has_keys(&["type", "prev", "sig"]) {
-                return Ok(());
+                Ok(())
             } else {
-                return Err(Error::InvalidOperation);
+                Err(Error::InvalidOperation)
             }
         } else {
             if !self.is_operation() {
@@ -112,9 +112,9 @@ impl Operation {
                 "prev",
                 "sig",
             ]) {
-                return Ok(());
+                Ok(())
             } else {
-                return Err(Error::InvalidOperation);
+                Err(Error::InvalidOperation)
             }
         }
     }
@@ -349,7 +349,7 @@ pub fn validate_genesis_operation(buf: &[u8], binary_did: &[u8]) -> Result<(), E
     let op = Operation::from_slice(buf)?;
     op.validate()?;
     let prev = op.get_prev()?;
-    if !prev.is_none() {
+    if prev.is_some() {
         return Err(Error::NotGenesisOperation);
     }
     let rotation_keys = if op.is_legacy() {
