@@ -45,7 +45,7 @@ jobs:
       run: pnpm install
 
     - name: Generate test vectors
-      run: cd tools/gen-test-vectors && pnpm start
+      run: cd tools/gen-test-vectors && pnpm build && pnpm start
 
     - name: Cargo test
       run: cargo test -p ckb-did-plc-utils-tests
