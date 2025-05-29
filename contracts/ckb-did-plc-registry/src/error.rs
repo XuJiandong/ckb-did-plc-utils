@@ -23,7 +23,7 @@ impl From<UtilsError> for Error {
 }
 
 impl Error {
-    pub fn get_error_code(&self) -> i8 {
+    pub fn error_code(&self) -> i8 {
         match self {
             // ckb syserror starts from 21
             Error::Syscall(e) => match e {

@@ -69,10 +69,10 @@ async function main(
 
   const verifier = Verifier.from(resource, tx);
   if (isFailed) {
-    await verifier.verifyFailure(undefined, true);
+    await verifier.verifyFailure(undefined, false);
     return 0;
   } else {
-    return verifier.verifySuccess(true);
+    return verifier.verifySuccess(false);
   }
 }
 
@@ -116,6 +116,15 @@ describe("CKB DID PLC Registry", () => {
     binaryDid = getBinaryDid(did);
     let operation = cbor.encode(createOp);
     main(binaryDid, hexFrom(operation));
+    // invalid DID
+    let wrongBinaryDid = uint8arrays.fromString(binaryDid.slice(2), "hex");
+    wrongBinaryDid[0] ^= 1;
+    main(
+      hexFrom(uint8arrays.toString(wrongBinaryDid, "hex")),
+      hexFrom(operation),
+      undefined,
+      true,
+    );
   });
 
   test("it should update content with secp256k1 signature", async () => {
@@ -125,6 +134,18 @@ describe("CKB DID PLC Registry", () => {
     ops.push(op);
     let curData = cbor.encode(op);
     main(binaryDid, hexFrom(curData), hexFrom(prevData));
+  });
+  test("it should reject content with invalid cbor format", async () => {
+    handle = "at://ali.example2.com";
+    let prevData = cbor.encode(lastOp());
+    const op = await updateHandleOp(lastOp(), rotationKey1, handle);
+    ops.push(op);
+    let curData = cbor.encode(op);
+    for (let i = 0; i < 10; i++) {
+      curData[i] ^= 1;
+      prevData[i] ^= 1;
+    }
+    main(binaryDid, hexFrom(curData), hexFrom(prevData), true);
   });
 
   test("it should update content with secp256r1 signature", async () => {

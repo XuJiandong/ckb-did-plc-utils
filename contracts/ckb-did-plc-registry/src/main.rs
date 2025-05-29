@@ -17,7 +17,7 @@ pub fn program_entry() -> i8 {
         Err(e) => {
             #[cfg(feature = "enable_log")]
             log::error!("error: {:?}", e);
-            e.get_error_code()
+            e.error_code()
         }
     }
 }

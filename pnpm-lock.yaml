@@ -100,8 +100,8 @@ importers:
         specifier: ~7.0.3
         version: 7.0.3
       ckb-testtool:
-        specifier: ~1.0.0
-        version: 1.0.0(typescript@5.7.3)(zod@3.25.13)
+        specifier: ~1.0.1
+        version: 1.0.1(typescript@5.7.3)(zod@3.25.13)
       jest:
         specifier: ~29.7.0
         version: 29.7.0(@types/node@22.13.17)
@@ -1071,8 +1071,8 @@ packages:
   cjs-module-lexer@1.4.3:
     resolution: {integrity: sha512-9z8TZaGM1pfswYeXrUpzPrkx8UnWYdhJclsiYMm6x/w5+nN+8Tf/LnAgfLGQCm59qAOxU8WwHEq2vNwF6i4j+Q==}
 
-  ckb-testtool@1.0.0:
-    resolution: {integrity: sha512-46qSH8SLMGK02FTxMjqsP3jtEY3Sl/rIa7r7SQoLG7CsGD61pAVMvTY+65Q6YxG3uF6Rqhp4/XFzOLLtVi2lhw==}
+  ckb-testtool@1.0.1:
+    resolution: {integrity: sha512-GzpIqzgPk/SgoMrVfTBCo9AhP/XwAGKLq76DXL5LRCjNEQ+IkapezoPJVVdeOu7ubAKP564dMbEBfz4BsThEtQ==}
 
   cliui@7.0.4:
     resolution: {integrity: sha512-OcRE68cOsVMXp1Yvonl/fzkQOyjLSu/8bhPDfQt0e0/Eb283TKP20Fs2MqoPsr9SwA595rRCA+QMzYc9nBP+JQ==}
@@ -3711,7 +3711,7 @@ snapshots:
 
   cjs-module-lexer@1.4.3: {}
 
-  ckb-testtool@1.0.0(typescript@5.7.3)(zod@3.25.13):
+  ckb-testtool@1.0.1(typescript@5.7.3)(zod@3.25.13):
     dependencies:
       '@ckb-ccc/core': 1.8.1(typescript@5.7.3)(zod@3.25.13)
     transitivePeerDependencies:
