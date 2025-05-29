@@ -10,7 +10,6 @@ categories = ["cryptography", "no-std"]
 
 [features]
 default = []
-std = []
 enable_log = ["log", "hex"]
 
 [dependencies]
