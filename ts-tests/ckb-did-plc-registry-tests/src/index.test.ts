@@ -35,6 +35,10 @@ async function main(
   curData: Hex,
   prevData?: Hex,
   isFailed?: boolean,
+  config?: {
+    inputCellCount?: number;
+    outputCellCount?: number;
+  },
 ): Promise<number> {
   const resource = Resource.default();
   const tx = Transaction.default();
@@ -48,20 +52,27 @@ async function main(
   let typeScript = script.clone();
   typeScript.args = hexFrom("0x01" + did.slice(2));
 
+  let inputCellCount = config?.inputCellCount ?? 1;
+  let outputCellCount = config?.outputCellCount ?? 1;
+
   if (prevData != null) {
-    const inputCell = resource.mockCell(lockScript, typeScript, prevData);
-    tx.inputs.push(Resource.createCellInput(inputCell));
+    for (let i = 0; i < inputCellCount; i++) {
+      const inputCell = resource.mockCell(lockScript, typeScript, prevData);
+      tx.inputs.push(Resource.createCellInput(inputCell));
+    }
   }
 
-  tx.outputs.push(Resource.createCellOutput(lockScript, typeScript));
-  tx.outputsData.push(curData);
+  for (let i = 0; i < outputCellCount; i++) {
+    tx.outputs.push(Resource.createCellOutput(lockScript, typeScript));
+    tx.outputsData.push(curData);
+  }
 
   const verifier = Verifier.from(resource, tx);
   if (isFailed) {
-    await verifier.verifyFailure();
+    await verifier.verifyFailure(undefined, true);
     return 0;
   } else {
-    return verifier.verifySuccess(false);
+    return verifier.verifySuccess(true);
   }
 }
 
@@ -74,6 +85,7 @@ describe("CKB DID PLC Registry", () => {
   let handle = "at://alice.example.com";
   let atpPds = "https://example.com";
   let binaryDid: Hex = "0x";
+  let noPrefix = "at://alice.example3.com";
 
   beforeAll(async () => {
     signingKey = await Secp256k1Keypair.create();
@@ -107,18 +119,15 @@ describe("CKB DID PLC Registry", () => {
   });
 
   test("it should update content with secp256k1 signature", async () => {
-    const noPrefix = "ali.example2.com";
-    handle = `at://${noPrefix}`;
+    handle = "at://ali.example2.com";
     let prevData = cbor.encode(lastOp());
-    const op = await updateHandleOp(lastOp(), rotationKey1, noPrefix);
+    const op = await updateHandleOp(lastOp(), rotationKey1, handle);
     ops.push(op);
     let curData = cbor.encode(op);
     main(binaryDid, hexFrom(curData), hexFrom(prevData));
   });
 
   test("it should update content with secp256r1 signature", async () => {
-    const noPrefix = "alice.example3.com";
-    handle = `at://${noPrefix}`;
     let prevData = cbor.encode(lastOp());
     const op = await updateHandleOp(lastOp(), rotationKey2, noPrefix);
     ops.push(op);
@@ -127,17 +136,38 @@ describe("CKB DID PLC Registry", () => {
   });
 
   test("it should reject updates with wrong rotation key", async () => {
-    const noPrefix = "alice.example3.com";
-    handle = `at://${noPrefix}`;
     let prevData = cbor.encode(lastOp());
     const op = await updateHandleOp(lastOp(), wrongKey, noPrefix);
     let curData = cbor.encode(op);
     main(binaryDid, hexFrom(curData), hexFrom(prevData), true);
   });
 
+  test("it should reject updates with more than 2 output cells", async () => {
+    let prevData = cbor.encode(lastOp());
+    const op = await updateHandleOp(lastOp(), wrongKey, noPrefix);
+    let curData = cbor.encode(op);
+    main(binaryDid, hexFrom(curData), hexFrom(prevData), true, {
+      outputCellCount: 2,
+    });
+  });
+  test("it should reject updates with more than 2 input cells", async () => {
+    let prevData = cbor.encode(lastOp());
+    const op = await updateHandleOp(lastOp(), wrongKey, noPrefix);
+    let curData = cbor.encode(op);
+    main(binaryDid, hexFrom(curData), hexFrom(prevData), true, {
+      inputCellCount: 2,
+    });
+  });
+  test("it should reject updates with zero output cells", async () => {
+    let prevData = cbor.encode(lastOp());
+    const op = await updateHandleOp(lastOp(), wrongKey, noPrefix);
+    let curData = cbor.encode(op);
+    main(binaryDid, hexFrom(curData), hexFrom(prevData), true, {
+      outputCellCount: 0,
+    });
+  });
+
   test("it should reject updates with invalid signature", async () => {
-    const noPrefix = "alice.example3.com";
-    handle = `at://${noPrefix}`;
     let prevData = cbor.encode(lastOp());
     const op = await updateHandleOp(lastOp(), rotationKey1, noPrefix);
     let binarySig = uint8arrays.fromString(op.sig, "base64url");

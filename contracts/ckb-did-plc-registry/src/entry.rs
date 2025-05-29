@@ -21,12 +21,12 @@ fn default_entry() -> Result<(), Error> {
     let script = load_script()?;
     // 1. There's at most one input, and exactly one output in the script group.
     if is_cell_present(1, Source::GroupInput) || is_cell_present(1, Source::GroupOutput) {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "enable_log")]
         log::warn!("invalid cells");
         return Err(Error::InvalidCell);
     }
     if !is_cell_present(0, Source::GroupOutput) {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "enable_log")]
         log::warn!("no output cell found");
         return Err(Error::InvalidCell);
     }
@@ -79,7 +79,7 @@ pub fn entry() -> Result<(), Error> {
     match args[0] {
         SCRIPT_ARGS_OP_DEFAULT => default_entry(),
         _ => {
-            #[cfg(feature = "log")]
+            #[cfg(feature = "enable_log")]
             log::warn!("invalid script op: {}", args[0]);
             Err(Error::InvalidScriptOp)
         }

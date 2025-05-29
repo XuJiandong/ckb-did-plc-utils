@@ -332,7 +332,7 @@ pub fn validate_2_operations(prev_buf: &[u8], cur_buf: &[u8]) -> Result<(), Erro
         {
             log::warn!("invalid prev");
             log::warn!("cid: {}", cid);
-            log::warn!("prev: {}", cur_op.get_prev()?);
+            log::warn!("prev: {:?}", cur_op.get_prev()?);
         }
         return Err(Error::InvalidPrev);
     }
@@ -363,8 +363,8 @@ pub fn validate_genesis_operation(buf: &[u8], binary_did: &[u8]) -> Result<(), E
         #[cfg(feature = "enable_log")]
         {
             log::warn!("did mismatched");
-            log::warn!("did: {}", did);
-            log::warn!("expected did: {}", expected_did);
+            log::warn!("did: {:?}", binary_did);
+            log::warn!("expected did: {:?}", expected_did);
         }
         return Err(Error::DidMismatched);
     }
