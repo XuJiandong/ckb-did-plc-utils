@@ -10,13 +10,11 @@ categories = ["cryptography", "no-std"]
 
 [features]
 default = []
-std = []
-enable_log = ["std", "log", "hex"]
+enable_log = ["log", "hex"]
 
 [dependencies]
 # Encoding and serialization
 cbor4ii = { version = "1.0.0", features = ["use_alloc"] }
-unsigned-varint = "0.8.0"
 multibase = { version = "0.9", default-features = false }
 base64 = { version = "0.22.1", default-features = false, features = ["alloc"] }
 base32 = "0.5.1"
@@ -28,4 +26,4 @@ p256 = { version = "0.13.2", default-features = false, features = ["arithmetic",
 
 # Optional dependencies
 log = { version = "0.4.27", optional = true }
-hex = { version = "0.4.3", optional = true }
+hex = { version = "0.4.3", optional = true, default-features = false, features = ["alloc"]}

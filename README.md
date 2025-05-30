@@ -1,7 +1,3 @@
-# ckb-did-plc-utils2
+# DID PLC Registry on CKB
 
-TODO: Write this readme
-
-*This project was bootstrapped with [ckb-script-templates].*
-
-[ckb-script-templates]: https://github.com/cryptape/ckb-script-templates
+[DID PLC Registry on CKB](https://awesome-web5.notion.site/DID-PLC-Registry-on-CKB-RFC-1e48f0d3781e80e6a01adeaf459112c9)

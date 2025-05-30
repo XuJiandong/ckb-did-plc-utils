@@ -89,15 +89,15 @@ impl Operation {
                 "prev",
                 "sig",
             ]) {
-                return Ok(());
+                Ok(())
             } else {
-                return Err(Error::InvalidOperation);
+                Err(Error::InvalidOperation)
             }
         } else if self.is_tombstone() {
             if self.has_keys(&["type", "prev", "sig"]) {
-                return Ok(());
+                Ok(())
             } else {
-                return Err(Error::InvalidOperation);
+                Err(Error::InvalidOperation)
             }
         } else {
             if !self.is_operation() {
@@ -112,9 +112,9 @@ impl Operation {
                 "prev",
                 "sig",
             ]) {
-                return Ok(());
+                Ok(())
             } else {
-                return Err(Error::InvalidOperation);
+                Err(Error::InvalidOperation)
             }
         }
     }
@@ -284,17 +284,27 @@ impl Operation {
         }
         Err(Error::InvalidOperation)
     }
+    #[allow(unused)]
     pub(crate) fn get_did(&self) -> Result<String, Error> {
+        let binary_did = self.get_binary_did()?;
+        let b32 = base32::encode(
+            Alphabet::Rfc4648Lower { padding: false },
+            binary_did.as_slice(),
+        );
+        Ok(format!("did:plc:{}", b32))
+    }
+    pub(crate) fn get_binary_did(&self) -> Result<Vec<u8>, Error> {
         let mut writer = BufWriter::new(Vec::new());
         self.raw
             .encode(&mut writer)
             .map_err(|_| Error::InvalidOperation)?;
         let dag = writer.into_inner();
         let hashed = Sha256::digest(dag.as_slice());
-        let b32 = base32::encode(Alphabet::Rfc4648Lower { padding: false }, hashed.as_slice());
         // The identifier part is 24 characters long, including only characters from the base32 encoding set.
-        Ok(format!("did:plc:{}", &b32[0..24]))
+        // Which means the binary size is 15 bytes.
+        Ok(hashed[0..15].to_vec())
     }
+
     fn has_keys(&self, keys: &[&str]) -> bool {
         keys.iter()
             .all(|&key| self.cached_keys.iter().any(|k| k == key))
@@ -322,7 +332,7 @@ pub fn validate_2_operations(prev_buf: &[u8], cur_buf: &[u8]) -> Result<(), Erro
         {
             log::warn!("invalid prev");
             log::warn!("cid: {}", cid);
-            log::warn!("prev: {}", cur_op.get_prev()?);
+            log::warn!("prev: {:?}", cur_op.get_prev()?);
         }
         return Err(Error::InvalidPrev);
     }
@@ -335,11 +345,11 @@ pub fn validate_2_operations(prev_buf: &[u8], cur_buf: &[u8]) -> Result<(), Erro
     Ok(())
 }
 
-pub fn validate_genesis_operation(buf: &[u8], did: String) -> Result<(), Error> {
+pub fn validate_genesis_operation(buf: &[u8], binary_did: &[u8]) -> Result<(), Error> {
     let op = Operation::from_slice(buf)?;
     op.validate()?;
     let prev = op.get_prev()?;
-    if !prev.is_none() {
+    if prev.is_some() {
         return Err(Error::NotGenesisOperation);
     }
     let rotation_keys = if op.is_legacy() {
@@ -348,13 +358,13 @@ pub fn validate_genesis_operation(buf: &[u8], did: String) -> Result<(), Error> 
         op.get_rotation_keys()?
     };
     op.verify_signature(&rotation_keys)?;
-    let expected_did = op.get_did()?;
-    if did != expected_did {
+    let expected_did = op.get_binary_did()?;
+    if binary_did != expected_did {
         #[cfg(feature = "enable_log")]
         {
             log::warn!("did mismatched");
-            log::warn!("did: {}", did);
-            log::warn!("expected did: {}", expected_did);
+            log::warn!("did: {:?}", binary_did);
+            log::warn!("expected did: {:?}", expected_did);
         }
         return Err(Error::DidMismatched);
     }

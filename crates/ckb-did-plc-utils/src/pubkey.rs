@@ -34,10 +34,8 @@ impl PublicKey {
         let key = key.split_at(8).1;
         let raw_pubkey = decode_base58btc(key)?;
         let is_secp256k1 = raw_pubkey[0] == 0xE7 && raw_pubkey[1] == 0x01;
-        if !is_secp256k1 {
-            if raw_pubkey[0] != 0x80 || raw_pubkey[1] != 0x24 {
-                return Err(Error::InvalidKey);
-            }
+        if !is_secp256k1 && (raw_pubkey[0] != 0x80 || raw_pubkey[1] != 0x24) {
+            return Err(Error::InvalidKey);
         }
         let pubkey = raw_pubkey[2..].to_vec();
         if pubkey.len() != 33 {
