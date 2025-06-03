@@ -1,0 +1,9 @@
+array Byte15 [byte; 15];
+option Byte15Opt (Byte15);
+vector Bytes <byte>;
+option BytesOpt (Bytes);
+
+table Onid {
+  offid: Byte15Opt,
+  document: BytesOpt,
+}

@@ -1,0 +1,17 @@
+vector Bytes <byte>;
+vector Uint8Vec <byte>;
+vector BytesVec <Bytes>;
+
+table OffidAuthorization {
+  history: BytesVec,
+  sig: Bytes,
+  signingKeys: Uint8Vec,
+}
+
+option BytesOpt (Bytes);
+
+table WitnessArgs {
+    lock:                   BytesOpt,          // Lock args
+    input_type:             BytesOpt,          // Type args for input
+    output_type:            BytesOpt,          // Type args for output
+}
