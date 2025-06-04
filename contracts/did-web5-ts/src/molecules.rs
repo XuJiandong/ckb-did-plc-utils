@@ -4,12 +4,14 @@
 mod cell_data;
 mod witness;
 
+use crate::error::Error;
+use alloc::{boxed::Box, vec::Vec};
+use ckb_did_plc_utils::cbor4ii::core::{dec::Decode, utils::SliceReader, Value};
+use ckb_std::{ckb_constants::Source, error::SysError, syscalls};
 use core::cmp::min;
 
-use alloc::boxed::Box;
 pub use cell_data::*;
-use ckb_std::{ckb_constants::Source, error::SysError, syscalls};
-pub use molecule::lazy_reader::{Cursor, Error, Read};
+pub use molecule::lazy_reader::{Cursor, Error as MoleculeError, Read};
 pub use witness::*;
 
 fn read_data<F: Fn(&mut [u8], usize) -> Result<usize, SysError>>(
@@ -17,33 +19,28 @@ fn read_data<F: Fn(&mut [u8], usize) -> Result<usize, SysError>>(
     buf: &mut [u8],
     offset: usize,
     total_size: usize,
-) -> Result<usize, Error> {
+) -> Result<usize, MoleculeError> {
     if offset >= total_size {
-        return Err(Error::OutOfBound(offset, total_size));
+        return Err(MoleculeError::OutOfBound(offset, total_size));
     }
-    let remaining_len = total_size - offset;
-    let min_len = min(remaining_len, buf.len());
-    if (offset + min_len) > total_size {
-        return Err(Error::OutOfBound(offset + min_len, total_size));
-    }
-    let actual_len = match load_func(buf, offset) {
-        Ok(l) => l,
+    match load_func(buf, offset) {
+        Ok(l) => Ok(l),
         Err(err) => match err {
-            SysError::LengthNotEnough(l) => l,
-            _ => return Err(Error::OutOfBound(0, 0)),
+            SysError::LengthNotEnough(_) => Ok(buf.len()),
+            _ => return Err(MoleculeError::OutOfBound(0, 0)),
         },
-    };
-    let read_len = min(buf.len(), actual_len);
-    Ok(read_len)
+    }
 }
 
-fn read_size<F: Fn(&mut [u8]) -> Result<usize, SysError>>(load_func: F) -> Result<usize, Error> {
+fn read_size<F: Fn(&mut [u8]) -> Result<usize, SysError>>(
+    load_func: F,
+) -> Result<usize, MoleculeError> {
     let mut buf = [0u8; 4];
     match load_func(&mut buf) {
         Ok(l) => Ok(l),
         Err(e) => match e {
             SysError::LengthNotEnough(l) => Ok(l),
-            _ => Err(Error::OutOfBound(0, 0)),
+            _ => Err(MoleculeError::OutOfBound(0, 0)),
         },
     }
 }
@@ -66,7 +63,7 @@ impl OnidReader {
 }
 
 impl Read for OnidReader {
-    fn read(&self, buf: &mut [u8], offset: usize) -> Result<usize, Error> {
+    fn read(&self, buf: &mut [u8], offset: usize) -> Result<usize, MoleculeError> {
         read_data(
             |buf, offset| syscalls::load_cell_data(buf, offset, self.index, self.source),
             buf,
@@ -82,10 +79,23 @@ impl From<OnidReader> for Cursor {
     }
 }
 
-pub fn new_onid(index: usize, source: Source) -> cell_data::Onid {
+pub fn new_onid(index: usize, source: Source) -> Result<cell_data::Onid, Error> {
     let reader = OnidReader::new(index, source);
     let cursor: Cursor = reader.into();
-    cell_data::Onid::from(cursor)
+    let onid = cell_data::Onid::from(cursor);
+    // the molecule format should be compatible when cells are upgraded.
+    // TODO: add tests
+    onid.verify(true)?;
+
+    let doc = onid.document()?;
+    let doc = doc.ok_or(Error::InvalidDocumentCbor)?;
+    let doc: Vec<u8> = doc.try_into().map_err(|_| Error::InvalidDocumentCbor)?;
+
+    // check that the document with cbor format
+    let mut reader = SliceReader::new(&doc);
+    let _ = Value::decode(&mut reader).map_err(|_| Error::InvalidDocumentCbor)?;
+
+    Ok(onid)
 }
 
 struct WitnessArgsReader {
@@ -106,7 +116,7 @@ impl WitnessArgsReader {
 }
 
 impl Read for WitnessArgsReader {
-    fn read(&self, buf: &mut [u8], offset: usize) -> Result<usize, Error> {
+    fn read(&self, buf: &mut [u8], offset: usize) -> Result<usize, MoleculeError> {
         read_data(
             |buf, offset| syscalls::load_witness(buf, offset, self.index, self.source),
             buf,
@@ -122,8 +132,20 @@ impl From<WitnessArgsReader> for Cursor {
     }
 }
 
-pub fn new_witness_args(index: usize, source: Source) -> witness::WitnessArgs {
+pub fn new_witness_args(index: usize, source: Source) -> Result<witness::WitnessArgs, Error> {
     let reader = WitnessArgsReader::new(index, source);
     let cursor: Cursor = reader.into();
-    witness::WitnessArgs::from(cursor)
+    let witness_args = witness::WitnessArgs::from(cursor);
+    witness_args.verify(false)?;
+    Ok(witness_args)
+}
+
+pub fn new_offid_authorization() -> Result<witness::OffidAuthorization, Error> {
+    let witness_args = new_witness_args(0, Source::GroupOutput)?;
+    let output_type = witness_args.output_type()?;
+    let output_type = output_type.ok_or(Error::Molecule)?;
+    let offid_authorization = witness::OffidAuthorization::from(output_type);
+    // The authorization data doesn't require compatible format
+    offid_authorization.verify(false)?;
+    Ok(offid_authorization)
 }

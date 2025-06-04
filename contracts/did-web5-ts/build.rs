@@ -2,15 +2,16 @@ use std::process::Command;
 
 fn compile(schema: &str) {
     let out_dir = std::path::PathBuf::from("./src/molecules");
-    std::fs::create_dir_all(&out_dir).unwrap();
-
     let mut compiler = molecule_codegen::Compiler::new();
-    compiler
+    let result = compiler
         .input_schema_file(schema)
         .generate_code(molecule_codegen::Language::RustLazyReader)
         .output_dir(out_dir)
-        .run()
-        .unwrap();
+        .run();
+
+    if let Err(err) = result {
+        panic!("Failed to compile schema {}: {}", schema, err);
+    }
 }
 
 fn main() {

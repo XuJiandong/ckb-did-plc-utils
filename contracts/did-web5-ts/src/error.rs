@@ -1,10 +1,13 @@
 use ckb_did_plc_utils::error::Error as UtilsError;
 use ckb_std::error::SysError;
+use molecule::lazy_reader::Error as MoleculeError;
 
 #[derive(Debug)]
 pub enum Error {
     Syscall(SysError),
     Utils(UtilsError),
+    Molecule,
+    InvalidDocumentCbor,
 }
 
 impl From<SysError> for Error {
@@ -16,6 +19,12 @@ impl From<SysError> for Error {
 impl From<UtilsError> for Error {
     fn from(e: UtilsError) -> Self {
         Error::Utils(e)
+    }
+}
+
+impl From<MoleculeError> for Error {
+    fn from(_: MoleculeError) -> Self {
+        Error::Molecule
     }
 }
 
@@ -43,7 +52,9 @@ impl Error {
                 UtilsError::NotGenesisOperation => 38,
                 UtilsError::DidMismatched => 39,
             },
+            Error::Molecule => 50,
             // this script error starts from 51
+            Error::InvalidDocumentCbor => 51,
         }
     }
 }

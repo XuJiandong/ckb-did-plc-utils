@@ -6,7 +6,8 @@ mod error;
 mod molecules;
 
 ckb_std::entry!(program_entry);
-ckb_std::default_alloc!(16384, 1258306, 64);
+// 2M bytes
+ckb_std::default_alloc!(16384, 0x200000, 64);
 
 pub fn program_entry() -> i8 {
     #[cfg(feature = "enable_log")]
