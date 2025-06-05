@@ -51,10 +51,10 @@ test:
 	cargo test $(CARGO_ARGS)
 
 check:
-	cargo check $(CARGO_ARGS)
+	cargo check --target=riscv64imac-unknown-none-elf $(CARGO_ARGS)
 
 clippy:
-	cargo clippy $(CARGO_ARGS)
+	cargo clippy --target=riscv64imac-unknown-none-elf $(CARGO_ARGS)
 
 fmt:
 	cargo fmt $(CARGO_ARGS)

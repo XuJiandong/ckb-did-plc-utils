@@ -45,6 +45,7 @@ impl Error {
                 UtilsError::InvalidPrev => 37,
                 UtilsError::NotGenesisOperation => 38,
                 UtilsError::DidMismatched => 39,
+                UtilsError::ReaderError => 40,
             },
             // this script error starts from 51
             Error::InvalidScriptOp => 51,

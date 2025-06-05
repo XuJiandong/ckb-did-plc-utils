@@ -51,10 +51,11 @@ impl Error {
                 UtilsError::InvalidPrev => 37,
                 UtilsError::NotGenesisOperation => 38,
                 UtilsError::DidMismatched => 39,
+                UtilsError::ReaderError => 40,
             },
-            Error::Molecule => 50,
             // this script error starts from 51
-            Error::InvalidDocumentCbor => 51,
+            Error::Molecule => 51,
+            Error::InvalidDocumentCbor => 52,
         }
     }
 }

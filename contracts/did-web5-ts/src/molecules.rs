@@ -1,7 +1,9 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
+#[allow(clippy::all)]
 mod cell_data;
+#[allow(clippy::all)]
 mod witness;
 
 use crate::error::Error;
@@ -27,7 +29,7 @@ fn read_data<F: Fn(&mut [u8], usize) -> Result<usize, SysError>>(
         Ok(l) => Ok(l),
         Err(err) => match err {
             SysError::LengthNotEnough(_) => Ok(buf.len()),
-            _ => return Err(MoleculeError::OutOfBound(0, 0)),
+            _ => Err(MoleculeError::OutOfBound(0, 0)),
         },
     }
 }
