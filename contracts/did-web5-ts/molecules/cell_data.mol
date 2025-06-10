@@ -1,9 +1,12 @@
-array Byte15 [byte; 15];
-option Byte15Opt (Byte15);
 vector Bytes <byte>;
-option BytesOpt (Bytes);
+vector String <byte>; // In UTF-8
+vector StringVec <String>;
 
-table Onid {
-  offid: Byte15Opt,
-  document: BytesOpt,
+table DidWeb5DataV1 {
+    document: Bytes,
+    transferredFrom: StringVec,
+}
+
+union DidWeb5Data {
+    DidWeb5DataV1,
 }

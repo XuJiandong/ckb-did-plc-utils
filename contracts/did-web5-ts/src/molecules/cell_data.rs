@@ -2,40 +2,6 @@ extern crate alloc;
 use core::convert::TryInto;
 use molecule::lazy_reader::{Cursor, Error, NUMBER_SIZE};
 #[derive(Clone)]
-pub struct Byte15 {
-    pub cursor: Cursor,
-}
-impl From<Cursor> for Byte15 {
-    fn from(cursor: Cursor) -> Self {
-        Self { cursor }
-    }
-}
-impl Byte15 {
-    pub fn len(&self) -> usize {
-        15
-    }
-}
-impl Byte15 {
-    pub fn get(&self, index: usize) -> Result<u8, Error> {
-        let cur = self.cursor.slice_by_offset(1usize * index, 1usize)?;
-        cur.try_into()
-    }
-}
-impl Byte15 {
-    pub fn verify(&self, _compatible: bool) -> Result<(), Error> {
-        self.cursor.verify_fixed_size(15usize)?;
-        Ok(())
-    }
-}
-pub struct Byte15Opt {
-    pub cursor: Cursor,
-}
-impl From<Cursor> for Byte15Opt {
-    fn from(cursor: Cursor) -> Self {
-        Self { cursor }
-    }
-}
-#[derive(Clone)]
 pub struct Bytes {
     pub cursor: Cursor,
 }
@@ -117,52 +83,221 @@ impl Bytes {
         Ok(())
     }
 }
-pub struct BytesOpt {
+#[derive(Clone)]
+pub struct String {
     pub cursor: Cursor,
 }
-impl From<Cursor> for BytesOpt {
+impl From<Cursor> for String {
     fn from(cursor: Cursor) -> Self {
         Self { cursor }
     }
 }
+impl String {
+    pub fn len(&self) -> Result<usize, Error> {
+        self.cursor.fixvec_length()
+    }
+}
+impl String {
+    pub fn get(&self, index: usize) -> Result<u8, Error> {
+        let cur = self.cursor.fixvec_slice_by_index(1usize, index)?;
+        cur.try_into()
+    }
+}
+pub struct StringIterator {
+    cur: String,
+    index: usize,
+    len: usize,
+}
+impl core::iter::Iterator for StringIterator {
+    type Item = u8;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.len {
+            None
+        } else {
+            let res = self.cur.get(self.index).unwrap();
+            self.index += 1;
+            Some(res)
+        }
+    }
+}
+impl core::iter::IntoIterator for String {
+    type Item = u8;
+    type IntoIter = StringIterator;
+    fn into_iter(self) -> Self::IntoIter {
+        let len = self.len().unwrap();
+        Self::IntoIter {
+            cur: self,
+            index: 0,
+            len,
+        }
+    }
+}
+pub struct StringIteratorRef<'a> {
+    cur: &'a String,
+    index: usize,
+    len: usize,
+}
+impl<'a> core::iter::Iterator for StringIteratorRef<'a> {
+    type Item = u8;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.len {
+            None
+        } else {
+            let res = self.cur.get(self.index).unwrap();
+            self.index += 1;
+            Some(res)
+        }
+    }
+}
+impl String {
+    pub fn iter(&self) -> StringIteratorRef {
+        let len = self.len().unwrap();
+        StringIteratorRef {
+            cur: &self,
+            index: 0,
+            len,
+        }
+    }
+}
+impl String {
+    pub fn verify(&self, _compatible: bool) -> Result<(), Error> {
+        self.cursor.verify_fixvec(1usize)?;
+        Ok(())
+    }
+}
 #[derive(Clone)]
-pub struct Onid {
+pub struct StringVec {
     pub cursor: Cursor,
 }
-impl From<Cursor> for Onid {
+impl From<Cursor> for StringVec {
     fn from(cursor: Cursor) -> Self {
-        Onid { cursor }
+        Self { cursor }
     }
 }
-impl Onid {
-    pub fn offid(&self) -> Result<Option<[u8; 15usize]>, Error> {
+impl StringVec {
+    pub fn len(&self) -> Result<usize, Error> {
+        self.cursor.dynvec_length()
+    }
+}
+impl StringVec {
+    pub fn get(&self, index: usize) -> Result<Cursor, Error> {
+        let cur = self.cursor.dynvec_slice_by_index(index)?;
+        cur.convert_to_rawbytes()
+    }
+}
+pub struct StringVecIterator {
+    cur: StringVec,
+    index: usize,
+    len: usize,
+}
+impl core::iter::Iterator for StringVecIterator {
+    type Item = Cursor;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.len {
+            None
+        } else {
+            let res = self.cur.get(self.index).unwrap();
+            self.index += 1;
+            Some(res)
+        }
+    }
+}
+impl core::iter::IntoIterator for StringVec {
+    type Item = Cursor;
+    type IntoIter = StringVecIterator;
+    fn into_iter(self) -> Self::IntoIter {
+        let len = self.len().unwrap();
+        Self::IntoIter {
+            cur: self,
+            index: 0,
+            len,
+        }
+    }
+}
+pub struct StringVecIteratorRef<'a> {
+    cur: &'a StringVec,
+    index: usize,
+    len: usize,
+}
+impl<'a> core::iter::Iterator for StringVecIteratorRef<'a> {
+    type Item = Cursor;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.len {
+            None
+        } else {
+            let res = self.cur.get(self.index).unwrap();
+            self.index += 1;
+            Some(res)
+        }
+    }
+}
+impl StringVec {
+    pub fn iter(&self) -> StringVecIteratorRef {
+        let len = self.len().unwrap();
+        StringVecIteratorRef {
+            cur: &self,
+            index: 0,
+            len,
+        }
+    }
+}
+impl StringVec {
+    pub fn verify(&self, _compatible: bool) -> Result<(), Error> {
+        self.cursor.verify_dynvec()?;
+        Ok(())
+    }
+}
+#[derive(Clone)]
+pub struct DidWeb5DataV1 {
+    pub cursor: Cursor,
+}
+impl From<Cursor> for DidWeb5DataV1 {
+    fn from(cursor: Cursor) -> Self {
+        DidWeb5DataV1 { cursor }
+    }
+}
+impl DidWeb5DataV1 {
+    pub fn document(&self) -> Result<Cursor, Error> {
         let cur = self.cursor.table_slice_by_index(0usize)?;
-        if cur.option_is_none() {
-            Ok(None)
-        } else {
-            Ok(Some(cur.try_into()?))
-        }
+        cur.convert_to_rawbytes()
     }
 }
-impl Onid {
-    pub fn document(&self) -> Result<Option<Cursor>, Error> {
+impl DidWeb5DataV1 {
+    pub fn transferred_from(&self) -> Result<StringVec, Error> {
         let cur = self.cursor.table_slice_by_index(1usize)?;
-        if cur.option_is_none() {
-            Ok(None)
-        } else {
-            let cur = cur.convert_to_rawbytes()?;
-            Ok(Some(cur.into()))
-        }
+        Ok(cur.into())
     }
 }
-impl Onid {
+impl DidWeb5DataV1 {
     pub fn verify(&self, compatible: bool) -> Result<(), Error> {
         self.cursor.verify_table(2usize, compatible)?;
-        let val = self.offid()?;
-        if val.is_some() {
-            let val = val.unwrap();
-            Byte15::from(Cursor::try_from(val)?).verify(compatible)?;
-        }
+        self.transferred_from()?.verify(compatible)?;
         Ok(())
+    }
+}
+pub enum DidWeb5Data {
+    DidWeb5DataV1(DidWeb5DataV1),
+}
+impl TryFrom<Cursor> for DidWeb5Data {
+    type Error = Error;
+    fn try_from(cur: Cursor) -> Result<Self, Self::Error> {
+        let item = cur.union_unpack()?;
+        let mut cur = cur;
+        cur.add_offset(NUMBER_SIZE)?;
+        cur.sub_size(NUMBER_SIZE)?;
+        match item.item_id {
+            0usize => Ok(Self::DidWeb5DataV1(cur.into())),
+            _ => Err(Error::UnknownItem),
+        }
+    }
+}
+impl DidWeb5Data {
+    pub fn verify(&self, compatible: bool) -> Result<(), Error> {
+        match self {
+            Self::DidWeb5DataV1(v) => {
+                v.verify(compatible)?;
+                Ok(())
+            }
+        }
     }
 }

@@ -6,7 +6,6 @@ members = [ "crates/ckb-did-plc-utils",
   # detect insertion point for newly generated crates.
   # @@INSERTION_POINT@@
   "contracts/did-web5-ts",
-  "contracts/ckb-did-plc-registry",
   "tests",
 ]
 

@@ -14,6 +14,7 @@ use cbor4ii::core::enc::Encode;
 use cbor4ii::core::utils::{BufWriter, SliceReader};
 
 use base64::Engine;
+use molecule::lazy_reader::Cursor;
 use sha2::{Digest, Sha256};
 
 use crate::error::Error;
@@ -208,7 +209,11 @@ impl Operation {
         Err(Error::InvalidOperation)
     }
     // note, the `pubkeys`` are from previous operation
-    pub(crate) fn verify_signature(&self, pubkeys: &Vec<PublicKey>) -> Result<(), Error> {
+    pub(crate) fn verify_signature(
+        &self,
+        pubkeys: &[PublicKey],
+        signing_key_index: usize,
+    ) -> Result<(), Error> {
         let unsigned_op = self.new_unsigned_operation()?;
         let sig = self.get_signature()?;
         let mut writer = BufWriter::new(Vec::new());
@@ -217,30 +222,29 @@ impl Operation {
             .encode(&mut writer)
             .map_err(|_| Error::InvalidOperation)?;
         let msg = writer.into_inner();
-
-        // This loop must verify each public key against the signature because:
-        // 1. secp256k1 signatures don't include recovery IDs, requiring explicit pubkey verification
-        // 2. Both secp256k1 and secp256r1 signatures doesn't include pubkey part, so we must try each key
-        for pubkey in pubkeys {
-            if pubkey.verify(&msg, &sig).is_ok() {
-                return Ok(());
-            }
+        if signing_key_index >= pubkeys.len() {
+            return Err(Error::InvalidKeyIndex);
         }
-        #[cfg(feature = "enable_log")]
-        {
-            log::warn!("verify signature failed");
-            log::warn!("sig: (length = {}), {}", sig.len(), hex::encode(sig));
-            log::warn!("msg: (length = {}), {}", msg.len(), hex::encode(msg));
-            for pubkey in pubkeys {
-                let pubkey = pubkey.raw();
-                log::warn!(
-                    "pubkey: (length = {}), {}",
-                    pubkey.len(),
-                    hex::encode(pubkey)
-                );
+        if pubkeys[signing_key_index].verify(&msg, &sig).is_ok() {
+            Ok(())
+        } else {
+            #[cfg(feature = "enable_log")]
+            {
+                log::warn!("verify signature failed");
+                log::warn!("sig: (length = {}), {}", sig.len(), hex::encode(sig));
+                log::warn!("msg: (length = {}), {}", msg.len(), hex::encode(msg));
+                log::warn!("signing_key_index = {}", signing_key_index);
+                for pubkey in pubkeys {
+                    let pubkey = pubkey.raw();
+                    log::warn!(
+                        "pubkey: (length = {}), {}",
+                        pubkey.len(),
+                        hex::encode(pubkey)
+                    );
+                }
             }
+            Err(Error::VerifySignatureFailed)
         }
-        Err(Error::VerifySignatureFailed)
     }
     pub(crate) fn generate_cid(&self) -> Result<String, Error> {
         let mut writer = BufWriter::new(Vec::new());
@@ -321,7 +325,11 @@ impl Operation {
 // * get all rotation keys from previous operation
 // * create unsigned operation from current operation
 // * verify signature in current operation with current unsigned operation and rotation keys
-pub fn validate_2_operations(prev_buf: &[u8], cur_buf: &[u8]) -> Result<(), Error> {
+pub fn validate_2_operations(
+    prev_buf: &[u8],
+    cur_buf: &[u8],
+    signing_key_index: usize,
+) -> Result<(), Error> {
     let prev_op = Operation::from_slice(prev_buf)?;
     let cur_op = Operation::from_slice(cur_buf)?;
     prev_op.validate()?;
@@ -341,11 +349,15 @@ pub fn validate_2_operations(prev_buf: &[u8], cur_buf: &[u8]) -> Result<(), Erro
     } else {
         prev_op.get_rotation_keys()?
     };
-    cur_op.verify_signature(&rotation_keys)?;
+    cur_op.verify_signature(&rotation_keys, signing_key_index)?;
     Ok(())
 }
 
-pub fn validate_genesis_operation(buf: &[u8], binary_did: &[u8]) -> Result<(), Error> {
+pub fn validate_genesis_operation(
+    buf: &[u8],
+    binary_did: &[u8],
+    signing_key_index: usize,
+) -> Result<(), Error> {
     let op = Operation::from_slice(buf)?;
     op.validate()?;
     let prev = op.get_prev()?;
@@ -357,7 +369,7 @@ pub fn validate_genesis_operation(buf: &[u8], binary_did: &[u8]) -> Result<(), E
     } else {
         op.get_rotation_keys()?
     };
-    op.verify_signature(&rotation_keys)?;
+    op.verify_signature(&rotation_keys, signing_key_index)?;
     let expected_did = op.get_binary_did()?;
     if binary_did != expected_did {
         #[cfg(feature = "enable_log")]
@@ -368,5 +380,53 @@ pub fn validate_genesis_operation(buf: &[u8], binary_did: &[u8]) -> Result<(), E
         }
         return Err(Error::DidMismatched);
     }
+    Ok(())
+}
+
+fn validate_final_operation(
+    buf: &[u8],
+    final_sig: &[u8],
+    msg: &[u8],
+    signing_key_index: usize,
+) -> Result<(), Error> {
+    let op = Operation::from_slice(buf)?;
+    let rotation_keys = op.get_rotation_keys()?;
+    rotation_keys[signing_key_index].verify(msg, final_sig)?;
+    Ok(())
+}
+
+pub fn validate_operation_history(
+    signing_keys_index: Vec<usize>,
+    history: Vec<Cursor>,
+    binary_did: &[u8],
+    final_sig: &[u8],
+    msg: &[u8],
+) -> Result<(), Error> {
+    let history_len = history.len();
+
+    if history_len == 0 || (history_len + 1) != signing_keys_index.len() {
+        return Err(Error::InvalidHistory);
+    }
+    let genesis_operation: Vec<u8> = history[0].clone().try_into()?;
+    // Signing key index mapping:
+    // - signing_keys_index[0]: Genesis operation
+    // - signing_keys_index[1]: Transition from operation[0] to operation[1]
+    // - ...
+    // - signing_keys_index[history_len - 1]: Transition from operation[history_len-2] to operation[history_len-1]
+    // - signing_keys_index[history_len]: Final operation
+    validate_genesis_operation(&genesis_operation, binary_did, signing_keys_index[0])?;
+    let mut prev = genesis_operation;
+    for index in 1..history_len {
+        let cur: Vec<u8> = history[index].clone().try_into()?;
+        validate_2_operations(&prev, &cur, signing_keys_index[index])?;
+        prev = cur;
+    }
+    // Validate the final operation signature to authorize the did:plc operation on chain
+    validate_final_operation(
+        &prev,
+        final_sig,
+        msg,
+        signing_keys_index[history_len],
+    )?;
     Ok(())
 }

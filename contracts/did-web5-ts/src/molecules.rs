@@ -1,16 +1,12 @@
-#![allow(unused_imports)]
-#![allow(dead_code)]
-
-#[allow(clippy::all)]
+#[allow(clippy::all, unused_imports, dead_code)]
 mod cell_data;
-#[allow(clippy::all)]
+#[allow(clippy::all, unused_imports, dead_code)]
 mod witness;
 
 use crate::error::Error;
 use alloc::{boxed::Box, vec::Vec};
 use ckb_did_plc_utils::cbor4ii::core::{dec::Decode, utils::SliceReader, Value};
 use ckb_std::{ckb_constants::Source, error::SysError, syscalls};
-use core::cmp::min;
 
 pub use cell_data::*;
 pub use molecule::lazy_reader::{Cursor, Error as MoleculeError, Read};
@@ -47,14 +43,14 @@ fn read_size<F: Fn(&mut [u8]) -> Result<usize, SysError>>(
     }
 }
 
-struct OnidReader {
+struct DataReader {
     total_size: usize,
     index: usize,
     source: Source,
 }
 
-impl OnidReader {
-    pub fn new(index: usize, source: Source) -> Self {
+impl DataReader {
+    fn new(index: usize, source: Source) -> Self {
         let total_size = read_size(|buf| syscalls::load_cell_data(buf, 0, index, source)).unwrap();
         Self {
             total_size,
@@ -64,7 +60,7 @@ impl OnidReader {
     }
 }
 
-impl Read for OnidReader {
+impl Read for DataReader {
     fn read(&self, buf: &mut [u8], offset: usize) -> Result<usize, MoleculeError> {
         read_data(
             |buf, offset| syscalls::load_cell_data(buf, offset, self.index, self.source),
@@ -75,39 +71,39 @@ impl Read for OnidReader {
     }
 }
 
-impl From<OnidReader> for Cursor {
-    fn from(data: OnidReader) -> Self {
+impl From<DataReader> for Cursor {
+    fn from(data: DataReader) -> Self {
         Cursor::new(data.total_size, Box::new(data))
     }
 }
 
-pub fn new_onid(index: usize, source: Source) -> Result<cell_data::Onid, Error> {
-    let reader = OnidReader::new(index, source);
+pub fn new_data(index: usize, source: Source) -> Result<DidWeb5DataV1, Error> {
+    let reader = DataReader::new(index, source);
     let cursor: Cursor = reader.into();
-    let onid = cell_data::Onid::from(cursor);
-    // the molecule format should be compatible when cells are upgraded.
-    // TODO: add tests
-    onid.verify(true)?;
+    let data = DidWeb5Data::try_from(cursor)?;
+    data.verify(false)?;
 
-    let doc = onid.document()?;
-    let doc = doc.ok_or(Error::InvalidDocumentCbor)?;
-    let doc: Vec<u8> = doc.try_into().map_err(|_| Error::InvalidDocumentCbor)?;
+    let DidWeb5Data::DidWeb5DataV1(data) = data;
+    let doc: Vec<u8> = data
+        .document()?
+        .try_into()
+        .map_err(|_| Error::InvalidDocumentCbor)?;
 
     // check that the document with cbor format
     let mut reader = SliceReader::new(&doc);
     let _ = Value::decode(&mut reader).map_err(|_| Error::InvalidDocumentCbor)?;
 
-    Ok(onid)
+    Ok(data)
 }
 
-struct WitnessArgsReader {
+pub struct WitnessArgsReader {
     total_size: usize,
     index: usize,
     source: Source,
 }
 
 impl WitnessArgsReader {
-    fn new(index: usize, source: Source) -> Self {
+    pub fn new(index: usize, source: Source) -> Self {
         let total_size = read_size(|buf| syscalls::load_witness(buf, 0, index, source)).unwrap();
         Self {
             total_size,
@@ -137,17 +133,16 @@ impl From<WitnessArgsReader> for Cursor {
 pub fn new_witness_args(index: usize, source: Source) -> Result<witness::WitnessArgs, Error> {
     let reader = WitnessArgsReader::new(index, source);
     let cursor: Cursor = reader.into();
-    let witness_args = witness::WitnessArgs::from(cursor);
+    let witness_args = WitnessArgs::from(cursor);
     witness_args.verify(false)?;
     Ok(witness_args)
 }
 
-pub fn new_offid_authorization() -> Result<witness::OffidAuthorization, Error> {
+pub fn new_witness() -> Result<witness::DidWeb5Witness, Error> {
     let witness_args = new_witness_args(0, Source::GroupOutput)?;
     let output_type = witness_args.output_type()?;
     let output_type = output_type.ok_or(Error::Molecule)?;
-    let offid_authorization = witness::OffidAuthorization::from(output_type);
-    // The authorization data doesn't require compatible format
-    offid_authorization.verify(false)?;
-    Ok(offid_authorization)
+    let witness = DidWeb5Witness::from(output_type);
+    witness.verify(false)?;
+    Ok(witness)
 }

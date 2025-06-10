@@ -2,10 +2,16 @@ vector Bytes <byte>;
 vector Uint8Vec <byte>;
 vector BytesVec <Bytes>;
 
-table OffidAuthorization {
-  history: BytesVec,
-  sig: Bytes,
-  signingKeys: Uint8Vec,
+table PlcAuthorization {
+    history: BytesVec,
+    sig: Bytes,
+    signingKeys: Uint8Vec,
+}
+
+vector PlcAuthorizationVec <PlcAuthorization>;
+
+table DidWeb5Witness {
+    transferredFrom: PlcAuthorizationVec,
 }
 
 option BytesOpt (Bytes);

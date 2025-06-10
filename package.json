@@ -1,8 +1,7 @@
 {
   "private": true,
   "workspaces": [
-    "tools/gen-test-vectors",
-    "ts-tests/ckb-did-plc-registry-tests"
+    "tools/gen-test-vectors"
   ],
   "scripts": {
     "build": "pnpm -r run build",

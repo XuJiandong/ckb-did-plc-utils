@@ -52,6 +52,9 @@ impl Error {
                 UtilsError::NotGenesisOperation => 38,
                 UtilsError::DidMismatched => 39,
                 UtilsError::ReaderError => 40,
+                UtilsError::InvalidKeyIndex => 41,
+                UtilsError::InvalidHistory => 42,
+                UtilsError::MoleculeError(_) => 43,
             },
             // this script error starts from 51
             Error::Molecule => 51,

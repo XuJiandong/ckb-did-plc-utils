@@ -248,36 +248,143 @@ impl BytesVec {
     }
 }
 #[derive(Clone)]
-pub struct OffidAuthorization {
+pub struct PlcAuthorization {
     pub cursor: Cursor,
 }
-impl From<Cursor> for OffidAuthorization {
+impl From<Cursor> for PlcAuthorization {
     fn from(cursor: Cursor) -> Self {
-        OffidAuthorization { cursor }
+        PlcAuthorization { cursor }
     }
 }
-impl OffidAuthorization {
+impl PlcAuthorization {
     pub fn history(&self) -> Result<BytesVec, Error> {
         let cur = self.cursor.table_slice_by_index(0usize)?;
         Ok(cur.into())
     }
 }
-impl OffidAuthorization {
+impl PlcAuthorization {
     pub fn sig(&self) -> Result<Cursor, Error> {
         let cur = self.cursor.table_slice_by_index(1usize)?;
         cur.convert_to_rawbytes()
     }
 }
-impl OffidAuthorization {
+impl PlcAuthorization {
     pub fn signing_keys(&self) -> Result<Cursor, Error> {
         let cur = self.cursor.table_slice_by_index(2usize)?;
         cur.convert_to_rawbytes()
     }
 }
-impl OffidAuthorization {
+impl PlcAuthorization {
     pub fn verify(&self, compatible: bool) -> Result<(), Error> {
         self.cursor.verify_table(3usize, compatible)?;
         self.history()?.verify(compatible)?;
+        Ok(())
+    }
+}
+#[derive(Clone)]
+pub struct PlcAuthorizationVec {
+    pub cursor: Cursor,
+}
+impl From<Cursor> for PlcAuthorizationVec {
+    fn from(cursor: Cursor) -> Self {
+        Self { cursor }
+    }
+}
+impl PlcAuthorizationVec {
+    pub fn len(&self) -> Result<usize, Error> {
+        self.cursor.dynvec_length()
+    }
+}
+impl PlcAuthorizationVec {
+    pub fn get(&self, index: usize) -> Result<PlcAuthorization, Error> {
+        let cur = self.cursor.dynvec_slice_by_index(index)?;
+        Ok(cur.into())
+    }
+}
+pub struct PlcAuthorizationVecIterator {
+    cur: PlcAuthorizationVec,
+    index: usize,
+    len: usize,
+}
+impl core::iter::Iterator for PlcAuthorizationVecIterator {
+    type Item = PlcAuthorization;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.len {
+            None
+        } else {
+            let res = self.cur.get(self.index).unwrap();
+            self.index += 1;
+            Some(res)
+        }
+    }
+}
+impl core::iter::IntoIterator for PlcAuthorizationVec {
+    type Item = PlcAuthorization;
+    type IntoIter = PlcAuthorizationVecIterator;
+    fn into_iter(self) -> Self::IntoIter {
+        let len = self.len().unwrap();
+        Self::IntoIter {
+            cur: self,
+            index: 0,
+            len,
+        }
+    }
+}
+pub struct PlcAuthorizationVecIteratorRef<'a> {
+    cur: &'a PlcAuthorizationVec,
+    index: usize,
+    len: usize,
+}
+impl<'a> core::iter::Iterator for PlcAuthorizationVecIteratorRef<'a> {
+    type Item = PlcAuthorization;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.len {
+            None
+        } else {
+            let res = self.cur.get(self.index).unwrap();
+            self.index += 1;
+            Some(res)
+        }
+    }
+}
+impl PlcAuthorizationVec {
+    pub fn iter(&self) -> PlcAuthorizationVecIteratorRef {
+        let len = self.len().unwrap();
+        PlcAuthorizationVecIteratorRef {
+            cur: &self,
+            index: 0,
+            len,
+        }
+    }
+}
+impl PlcAuthorizationVec {
+    pub fn verify(&self, compatible: bool) -> Result<(), Error> {
+        self.cursor.verify_dynvec()?;
+        for i in 0..self.len()? {
+            self.get(i)?.verify(compatible)?;
+        }
+        Ok(())
+    }
+}
+#[derive(Clone)]
+pub struct DidWeb5Witness {
+    pub cursor: Cursor,
+}
+impl From<Cursor> for DidWeb5Witness {
+    fn from(cursor: Cursor) -> Self {
+        DidWeb5Witness { cursor }
+    }
+}
+impl DidWeb5Witness {
+    pub fn transferred_from(&self) -> Result<PlcAuthorizationVec, Error> {
+        let cur = self.cursor.table_slice_by_index(0usize)?;
+        Ok(cur.into())
+    }
+}
+impl DidWeb5Witness {
+    pub fn verify(&self, compatible: bool) -> Result<(), Error> {
+        self.cursor.verify_table(1usize, compatible)?;
+        self.transferred_from()?.verify(compatible)?;
         Ok(())
     }
 }
