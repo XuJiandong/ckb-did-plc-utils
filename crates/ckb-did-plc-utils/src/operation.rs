@@ -20,6 +20,19 @@ use sha2::{Digest, Sha256};
 use crate::error::Error;
 use crate::pubkey::PublicKey;
 
+// this is the only one valid staging id so far
+const STAGING_ID_PREFIX: &str = "web5:plc:";
+
+pub fn parse_staging_id(id: &[u8]) -> Result<Vec<u8>, Error> {
+    let str = core::str::from_utf8(id).map_err(|_| Error::InvalidDidFormat)?;
+    if let Some(str) = str.strip_prefix(STAGING_ID_PREFIX) {
+        base32::decode(Alphabet::Rfc4648Lower { padding: false }, str)
+            .ok_or(Error::InvalidDidFormat)
+    } else {
+        Err(Error::InvalidDidFormat)
+    }
+}
+
 pub(crate) struct Operation {
     raw: Value,
     cached_keys: Vec<String>,
@@ -396,11 +409,11 @@ fn validate_final_operation(
 }
 
 pub fn validate_operation_history(
-    signing_keys_index: Vec<usize>,
-    history: Vec<Cursor>,
     binary_did: &[u8],
-    final_sig: &[u8],
+    history: Vec<Cursor>,
+    signing_keys_index: Vec<usize>,
     msg: &[u8],
+    final_sig: &[u8],
 ) -> Result<(), Error> {
     let history_len = history.len();
 
@@ -422,11 +435,6 @@ pub fn validate_operation_history(
         prev = cur;
     }
     // Validate the final operation signature to authorize the did:plc operation on chain
-    validate_final_operation(
-        &prev,
-        final_sig,
-        msg,
-        signing_keys_index[history_len],
-    )?;
+    validate_final_operation(&prev, final_sig, msg, signing_keys_index[history_len])?;
     Ok(())
 }

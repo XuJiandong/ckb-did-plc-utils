@@ -219,7 +219,9 @@ dependencies = [
 name = "did-web5-ts"
 version = "0.1.0"
 dependencies = [
+ "base32",
  "ckb-did-plc-utils",
+ "ckb-hash",
  "ckb-std",
  "log",
  "molecule 0.9.0",

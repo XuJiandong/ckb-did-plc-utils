@@ -1,5 +1,10 @@
 use crate::error::Error;
-use cbor4ii::core::dec::{self, Read};
+use alloc::vec::Vec;
+use cbor4ii::core::{
+    Value,
+    dec::{self, Decode, Read},
+    utils::SliceReader,
+};
 use molecule::lazy_reader::Cursor;
 
 pub struct ReadAdaptor {
@@ -53,4 +58,11 @@ impl<'de> Read<'de> for ReadAdaptor {
     fn step_out(&mut self) {
         self.limit += 1;
     }
+}
+
+pub fn validate_cbor_format(cur: Cursor) -> Result<(), Error> {
+    let buf: Vec<u8> = cur.try_into()?;
+    let mut reader = SliceReader::new(&buf);
+    let _ = Value::decode(&mut reader).map_err(|_| Error::InvalidCbor)?;
+    Ok(())
 }

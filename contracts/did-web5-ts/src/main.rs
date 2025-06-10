@@ -4,6 +4,7 @@
 mod entry;
 mod error;
 mod molecules;
+mod type_id;
 
 ckb_std::entry!(program_entry);
 // 2M bytes

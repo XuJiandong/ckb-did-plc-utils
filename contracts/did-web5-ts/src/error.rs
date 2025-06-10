@@ -1,5 +1,6 @@
 use ckb_did_plc_utils::error::Error as UtilsError;
 use ckb_std::error::SysError;
+use core::fmt::Display;
 use molecule::lazy_reader::Error as MoleculeError;
 
 #[derive(Debug)]
@@ -8,7 +9,17 @@ pub enum Error {
     Utils(UtilsError),
     Molecule,
     InvalidDocumentCbor,
+    MismatchedFrom,
+    MismatchedFrom2,
 }
+
+impl Display for Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl core::error::Error for Error {}
 
 impl From<SysError> for Error {
     fn from(e: SysError) -> Self {
@@ -38,7 +49,8 @@ impl Error {
                 SysError::LengthNotEnough(_) => 23,
                 SysError::Encoding => 24,
                 SysError::WaitFailure => 25,
-                _ => 26,
+                SysError::TypeIDError => 26,
+                _ => 27,
             },
             // crate ckb-did-plc-utils error starts from 31
             Error::Utils(e) => match e {
@@ -55,10 +67,14 @@ impl Error {
                 UtilsError::InvalidKeyIndex => 41,
                 UtilsError::InvalidHistory => 42,
                 UtilsError::MoleculeError(_) => 43,
+                UtilsError::InvalidCbor => 44,
+                UtilsError::InvalidDidFormat => 45,
             },
             // this script error starts from 51
             Error::Molecule => 51,
             Error::InvalidDocumentCbor => 52,
+            Error::MismatchedFrom => 53,
+            Error::MismatchedFrom2 => 54,
         }
     }
 }

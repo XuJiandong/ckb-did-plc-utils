@@ -16,6 +16,8 @@ pub enum Error {
     ReaderError,
     InvalidHistory,
     MoleculeError(MoleculeError),
+    InvalidCbor,
+    InvalidDidFormat,
 }
 
 impl From<MoleculeError> for Error {
