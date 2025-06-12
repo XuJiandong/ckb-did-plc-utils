@@ -5,25 +5,22 @@ import {
   Operation,
   updateHandleOp,
   updateRotationKeysOp,
-  getLastOpWithCid,
-  tombstoneOp,
 } from "@did-plc/lib";
 import * as cbor from "@ipld/dag-cbor";
 
 import * as uint8arrays from "uint8arrays";
 import { bytesFrom, Hex, hexFrom, Num, numFrom } from "@ckb-ccc/core";
-import { sign } from "crypto";
 
 function getBinaryDid(did: string): Hex {
   if (!did.startsWith("did:plc:")) {
     throw new Error("Invalid DID");
   }
-  let did_without_prefix = did.slice(8);
-  const decoded = uint8arrays.fromString(did_without_prefix, "base32");
+  const didWithoutPrefix = did.slice(8);
+  const decoded = uint8arrays.fromString(didWithoutPrefix, "base32");
   return hexFrom(decoded);
 }
 
-export type PlcResult = {
+export type PlcOperationResult = {
   history: Hex[];
   signingKeys: Num[];
   binaryDid: Hex;
@@ -31,7 +28,10 @@ export type PlcResult = {
   sig?: Hex;
 };
 
-export async function generateOperation(option?: {}): Promise<PlcResult> {
+export async function generateOperations(config?: {
+  moreOps?: boolean;
+  invalidSignature?: boolean;
+}): Promise<PlcOperationResult> {
   const ops: Operation[] = [];
   let key = await Secp256k1Keypair.create();
   let rotationKey1 = await Secp256k1Keypair.create();
@@ -41,6 +41,13 @@ export async function generateOperation(option?: {}): Promise<PlcResult> {
   let binaryDid: Hex = "0x";
   let signingKeys: Num[] = [];
 
+  const lastOp = () => {
+    const op = ops.at(-1);
+    if (!op) {
+      throw new Error("can't find last op");
+    }
+    return op;
+  };
   const createOp = await atprotoOp({
     signingKey: key.did(),
     rotationKeys: [rotationKey1.did(), rotationKey2.did()],
@@ -54,16 +61,45 @@ export async function generateOperation(option?: {}): Promise<PlcResult> {
 
   let did = await didForCreateOp(createOp);
   binaryDid = getBinaryDid(did);
+
+  if (config?.moreOps || config?.invalidSignature) {
+    // update handle
+    handle = "at://ali.example2.com";
+    const op = await updateHandleOp(lastOp(), rotationKey1, handle);
+    ops.push(op);
+    signingKeys.push(0n);
+
+    // update with r1 key
+    const op2 = await updateHandleOp(lastOp(), rotationKey2, handle);
+    ops.push(op2);
+    signingKeys.push(1n);
+
+    // update rotation keys
+    const newRotationKey = await Secp256k1Keypair.create();
+    let op3 = await updateRotationKeysOp(lastOp(), rotationKey1, [
+      rotationKey1.did(),
+      rotationKey2.did(),
+      newRotationKey.did(),
+    ]);
+    if (config?.invalidSignature) {
+      let wrongSig = uint8arrays.fromString(op3.sig, "base64url");
+      wrongSig[0] ^= 1;
+      op3.sig = uint8arrays.toString(wrongSig, "base64url");
+    }
+    ops.push(op3);
+    signingKeys.push(0n);
+  }
+
   return {
     history: ops.map((op) => hexFrom(cbor.encode(op))),
     signingKeys,
     binaryDid,
-    keyPairs: [rotationKey1, rotationKey1],
+    keyPairs: [rotationKey1, rotationKey2],
   };
 }
 
 export async function signDidWeb5(
-  result: PlcResult,
+  result: PlcOperationResult,
   signingKey: number,
   msg: Hex,
 ): Promise<void> {
@@ -71,5 +107,5 @@ export async function signDidWeb5(
   let signature = await keypair.sign(bytesFrom(msg));
   result.sig = hexFrom(signature);
   result.signingKeys.push(numFrom(signingKey));
-  console.assert(result.signingKeys.length == result.history.length + 1);
+  console.assert(result.signingKeys.length === result.history.length + 1);
 }

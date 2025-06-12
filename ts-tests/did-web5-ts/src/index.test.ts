@@ -5,7 +5,6 @@ import {
   Hex,
   hashTypeId,
   bytesFrom,
-  Bytes,
   WitnessArgs,
 } from "@ckb-ccc/core";
 import { readFileSync } from "fs";
@@ -23,20 +22,23 @@ export const DEFAULT_SCRIPT = path.join(
   "../../../build/release/did-web5-ts",
 );
 
-function newStagingId(binaryDid: Hex): Bytes {
+function newStagingId(binaryDid: Hex): Hex {
   let did = bytesFrom(binaryDid);
   let str = "web5:plc:" + uint8arrays.toString(did, "base32");
-  return uint8arrays.fromString(str, "utf8");
+  return hexFrom(uint8arrays.fromString(str, "utf8"));
 }
 
 async function main(
-  result: plc.PlcResult,
+  result: plc.PlcOperationResult,
   config: {
     inputCellCount?: number;
     outputCellCount?: number;
     noAssociatePlc?: boolean;
+    update?: boolean;
+    updateStagingId?: boolean;
+    invalidSignature?: boolean;
   },
-  isFailed?: boolean,
+  shouldFail?: boolean,
 ): Promise<number> {
   const resource = Resource.default();
   const tx = Transaction.default();
@@ -51,16 +53,9 @@ async function main(
     tx,
     false,
   );
-  let typeScript = script.clone();
-  let transferredFrom = null;
+  let transferredFrom: Hex | null = null;
 
-  const inputCell = resource.mockCell(alwaysSuccessScript);
-  tx.inputs.push(Resource.createCellInput(inputCell));
-
-  let typeId = hashTypeId(tx.inputs[0], 0);
-  // 20 bytes Type ID.
-  typeScript.args = hexFrom(typeId.slice(0, 42));
-
+  // cell data
   if (config?.noAssociatePlc) {
     transferredFrom = null;
   } else {
@@ -72,13 +67,55 @@ async function main(
       transferredFrom,
     },
   });
-  tx.outputs.push(Resource.createCellOutput(alwaysSuccessScript, typeScript));
-  tx.outputsData.push(hexFrom(didWeb5Data.toBytes()));
 
-  let txHash = tx.hash();
-  await plc.signDidWeb5(result, 0, txHash);
+  if (config?.update || config?.updateStagingId) {
+    // script args
+    let typeScript = script.clone();
+    typeScript.args = hexFrom("0x" + "0".repeat(40));
+    const inputCell = resource.mockCell(
+      alwaysSuccessScript,
+      typeScript,
+      hexFrom(didWeb5Data.toBytes()),
+    );
+    // input cells
+    tx.inputs.push(Resource.createCellInput(inputCell));
 
+    // output cells
+    tx.outputs.push(Resource.createCellOutput(alwaysSuccessScript, typeScript));
+    let newDidWeb5Data = didWeb5Data.clone();
+    if (config?.updateStagingId) {
+      newDidWeb5Data.value.transferredFrom = hexFrom(newStagingId("0x00"));
+    } else {
+      newDidWeb5Data.value.document = hexFrom(
+        cbor.encode({ key: "hello, world" }),
+      );
+    }
+    tx.outputsData.push(hexFrom(newDidWeb5Data.toBytes()));
+  } else {
+    // input cells
+    const inputCell = resource.mockCell(alwaysSuccessScript);
+    tx.inputs.push(Resource.createCellInput(inputCell));
+
+    // Note: Type script args must be computed after input cells are added to the transaction
+    // because the type ID depends on the first input cell's outpoint
+    let typeScript = script.clone();
+    let typeId = hashTypeId(tx.inputs[0], 0);
+    typeScript.args = hexFrom(typeId.slice(0, 42)); // 20 bytes Type ID
+
+    // output cells
+    tx.outputs.push(Resource.createCellOutput(alwaysSuccessScript, typeScript));
+    tx.outputsData.push(hexFrom(didWeb5Data.toBytes()));
+  }
+
+  // witness
   if (!config?.noAssociatePlc) {
+    let txHash = tx.hash();
+    if (config.invalidSignature) {
+      result.signingKeys.push(0n);
+      result.sig = "0x00";
+    } else {
+      await plc.signDidWeb5(result, 0, txHash);
+    }
     if (!result.sig) {
       throw new Error("Signature is required");
     }
@@ -96,7 +133,7 @@ async function main(
   }
 
   const verifier = Verifier.from(resource, tx);
-  if (isFailed) {
+  if (shouldFail) {
     await verifier.verifyFailure(undefined, false);
     return 0;
   } else {
@@ -105,13 +142,32 @@ async function main(
 }
 
 describe("did-web5-ts", () => {
-  beforeAll(async () => {});
   test("it should process a genesis operation without associated did:plc correctly", async () => {
-    let result = await plc.generateOperation();
+    let result = await plc.generateOperations();
     await main(result, { noAssociatePlc: true });
   });
   test("it should process a genesis operation with associated did:plc correctly", async () => {
-    let result = await plc.generateOperation();
-    await main(result, { noAssociatePlc: false });
+    let result = await plc.generateOperations();
+    await main(result, {});
+  });
+  test("it should process several operations with associated did:plc correctly", async () => {
+    let result = await plc.generateOperations({ moreOps: true });
+    await main(result, {});
+  });
+  test("it should process an update correctly", async () => {
+    let result = await plc.generateOperations();
+    await main(result, { update: true });
+  });
+  test("it should reject an update with staging id changed", async () => {
+    let result = await plc.generateOperations();
+    await main(result, { updateStagingId: true }, true);
+  });
+  test("it should reject a genesis operation with associated did:plc and invalid signature", async () => {
+    let result = await plc.generateOperations();
+    await main(result, { invalidSignature: true }, true);
+  });
+  test("it should reject a genesis operation with associated did:plc and invalid signature 2", async () => {
+    let result = await plc.generateOperations({ invalidSignature: true });
+    await main(result, {}, true);
   });
 });

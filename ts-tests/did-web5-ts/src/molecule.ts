@@ -3,7 +3,6 @@ import {
   HexLike,
   hexFrom,
   Hex,
-  apply,
   NumLike,
   numFrom,
   Num,
@@ -41,7 +40,7 @@ export class DidWeb5DataV1 extends mol.Entity.Base<
     }
     return new DidWeb5DataV1(
       hexFrom(data.document),
-      apply(hexFrom, data.transferredFrom),
+      data.transferredFrom ? hexFrom(data.transferredFrom) : undefined,
     );
   }
 }
