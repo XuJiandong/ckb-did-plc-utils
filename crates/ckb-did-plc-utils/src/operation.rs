@@ -107,16 +107,7 @@ impl Operation {
             } else {
                 Err(Error::InvalidOperation)
             }
-        } else if self.is_tombstone() {
-            if self.has_keys(&["type", "prev", "sig"]) {
-                Ok(())
-            } else {
-                Err(Error::InvalidOperation)
-            }
-        } else {
-            if !self.is_operation() {
-                return Err(Error::InvalidOperation);
-            }
+        } else if self.is_operation() {
             if self.has_keys(&[
                 "type",
                 "rotationKeys",
@@ -130,6 +121,8 @@ impl Operation {
             } else {
                 Err(Error::InvalidOperation)
             }
+        } else {
+            Err(Error::InvalidOperation)
         }
     }
     pub(crate) fn is_operation(&self) -> bool {
@@ -149,18 +142,6 @@ impl Operation {
             for (k, v) in map {
                 if let (Value::Text(key), Value::Text(value)) = (k, v) {
                     if key == "type" && value == "create" {
-                        return true;
-                    }
-                }
-            }
-        }
-        false
-    }
-    pub(crate) fn is_tombstone(&self) -> bool {
-        if let Value::Map(map) = &self.raw {
-            for (k, v) in map {
-                if let (Value::Text(key), Value::Text(value)) = (k, v) {
-                    if key == "type" && value == "plc_tombstone" {
                         return true;
                     }
                 }

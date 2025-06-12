@@ -1,10 +1,10 @@
 vector Bytes <byte>;
 vector String <byte>; // In UTF-8
-vector StringVec <String>;
+option StringOpt (String);
 
 table DidWeb5DataV1 {
     document: Bytes,
-    transferredFrom: StringVec,
+    transferredFrom: StringOpt,
 }
 
 union DidWeb5Data {

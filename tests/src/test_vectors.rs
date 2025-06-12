@@ -74,7 +74,13 @@ fn test_vectors_5_6() {
 
 #[test]
 fn test_vectors_6_7() {
-    test_one_vector("6-update-handle.cbor", "7-tombstone.cbor", 0);
+    // tombstone is not allowed
+    let prev_path = get_test_vector_path("6-update-handle.cbor");
+    let cur_path = get_test_vector_path("7-tombstone.cbor");
+    let prev_buf = read(&prev_path).unwrap_or_else(|_| panic!("Failed to read {}", prev_path));
+    let cur_buf = read(&cur_path).unwrap_or_else(|_| panic!("Failed to read {}", cur_path));
+    let result = validate_2_operations(&prev_buf, &cur_buf, 0);
+    assert!(result.is_err());
 }
 
 #[test]

@@ -46,6 +46,12 @@ pub fn validate_type_id(type_id: &[u8]) -> Result<(), SysError> {
         blake2b.finalize(&mut ret);
 
         if &ret[0..type_id.len()] != type_id {
+            #[cfg(feature = "enable_log")]
+            log::warn!(
+                "type id mismatched: {} {}(expected)",
+                hex::encode(&ret[0..type_id.len()]),
+                hex::encode(&type_id)
+            );
             return Err(SysError::TypeIDError);
         }
     }

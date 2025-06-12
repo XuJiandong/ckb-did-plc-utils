@@ -8,10 +8,8 @@ table PlcAuthorization {
     signingKeys: Uint8Vec,
 }
 
-vector PlcAuthorizationVec <PlcAuthorization>;
-
 table DidWeb5Witness {
-    transferredFrom: PlcAuthorizationVec,
+    transferredFrom: PlcAuthorization,
 }
 
 option BytesOpt (Bytes);

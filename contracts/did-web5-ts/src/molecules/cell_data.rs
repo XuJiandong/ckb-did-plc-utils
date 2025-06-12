@@ -165,86 +165,12 @@ impl String {
         Ok(())
     }
 }
-#[derive(Clone)]
-pub struct StringVec {
+pub struct StringOpt {
     pub cursor: Cursor,
 }
-impl From<Cursor> for StringVec {
+impl From<Cursor> for StringOpt {
     fn from(cursor: Cursor) -> Self {
         Self { cursor }
-    }
-}
-impl StringVec {
-    pub fn len(&self) -> Result<usize, Error> {
-        self.cursor.dynvec_length()
-    }
-}
-impl StringVec {
-    pub fn get(&self, index: usize) -> Result<Cursor, Error> {
-        let cur = self.cursor.dynvec_slice_by_index(index)?;
-        cur.convert_to_rawbytes()
-    }
-}
-pub struct StringVecIterator {
-    cur: StringVec,
-    index: usize,
-    len: usize,
-}
-impl core::iter::Iterator for StringVecIterator {
-    type Item = Cursor;
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.index >= self.len {
-            None
-        } else {
-            let res = self.cur.get(self.index).unwrap();
-            self.index += 1;
-            Some(res)
-        }
-    }
-}
-impl core::iter::IntoIterator for StringVec {
-    type Item = Cursor;
-    type IntoIter = StringVecIterator;
-    fn into_iter(self) -> Self::IntoIter {
-        let len = self.len().unwrap();
-        Self::IntoIter {
-            cur: self,
-            index: 0,
-            len,
-        }
-    }
-}
-pub struct StringVecIteratorRef<'a> {
-    cur: &'a StringVec,
-    index: usize,
-    len: usize,
-}
-impl<'a> core::iter::Iterator for StringVecIteratorRef<'a> {
-    type Item = Cursor;
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.index >= self.len {
-            None
-        } else {
-            let res = self.cur.get(self.index).unwrap();
-            self.index += 1;
-            Some(res)
-        }
-    }
-}
-impl StringVec {
-    pub fn iter(&self) -> StringVecIteratorRef {
-        let len = self.len().unwrap();
-        StringVecIteratorRef {
-            cur: &self,
-            index: 0,
-            len,
-        }
-    }
-}
-impl StringVec {
-    pub fn verify(&self, _compatible: bool) -> Result<(), Error> {
-        self.cursor.verify_dynvec()?;
-        Ok(())
     }
 }
 #[derive(Clone)]
@@ -263,15 +189,19 @@ impl DidWeb5DataV1 {
     }
 }
 impl DidWeb5DataV1 {
-    pub fn transferred_from(&self) -> Result<StringVec, Error> {
+    pub fn transferred_from(&self) -> Result<Option<Cursor>, Error> {
         let cur = self.cursor.table_slice_by_index(1usize)?;
-        Ok(cur.into())
+        if cur.option_is_none() {
+            Ok(None)
+        } else {
+            let cur = cur.convert_to_rawbytes()?;
+            Ok(Some(cur.into()))
+        }
     }
 }
 impl DidWeb5DataV1 {
     pub fn verify(&self, compatible: bool) -> Result<(), Error> {
         self.cursor.verify_table(2usize, compatible)?;
-        self.transferred_from()?.verify(compatible)?;
         Ok(())
     }
 }

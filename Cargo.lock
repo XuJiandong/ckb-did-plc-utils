@@ -223,6 +223,7 @@ dependencies = [
  "ckb-did-plc-utils",
  "ckb-hash",
  "ckb-std",
+ "hex",
  "log",
  "molecule 0.9.0",
  "molecule-codegen",

@@ -1,7 +1,8 @@
 {
   "private": true,
   "workspaces": [
-    "tools/gen-test-vectors"
+    "tools/gen-test-vectors",
+    "ts-tests/did-web5-ts"
   ],
   "scripts": {
     "build": "pnpm -r run build",

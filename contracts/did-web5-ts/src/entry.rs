@@ -10,31 +10,32 @@ use ckb_std::{ckb_constants::Source, high_level::load_tx_hash};
 use molecule::lazy_reader::Cursor;
 
 fn mint() -> Result<(), Error> {
-    let witness = new_witness()?;
     let data = new_data(0, Source::GroupOutput)?;
+    // validate cbor format
+    validate_cbor_format(data.document()?)?;
 
-    let staging_ids: Vec<Vec<u8>> = data
-        .transferred_from()?
-        .into_iter()
-        .map(|e| e.try_into().map_err(|_| Error::Molecule))
-        .collect::<Result<Vec<_>, _>>()?;
-    let auth: Vec<PlcAuthorization> = witness.transferred_from()?.into_iter().collect();
+    let staging_id = data.transferred_from()?;
+    // Allow empty staging ID - this indicates the cell has no associated did:plc
+    // and can be minted without requiring did:plc authorization
+    if staging_id.is_none() {
+        return Ok(());
+    }
+    let staging_id: Vec<u8> = staging_id.unwrap().try_into()?;
 
-    if staging_ids.len() != auth.len() {
-        return Err(Error::MismatchedFrom2);
-    }
-    for (staging_id, auth) in staging_ids.iter().zip(auth.iter()) {
-        let binary_did = parse_staging_id(staging_id)?;
-        // History contains DID operations which can be very large. Using Cursor for lazy reading
-        // to avoid loading the entire operation history into memory at once.
-        let history: Vec<Cursor> = auth.history()?.into_iter().collect();
-        let final_sig: Vec<u8> = auth.sig()?.try_into()?;
-        let signing_key_index: Vec<u8> = auth.signing_keys()?.try_into()?;
-        let signing_key_index: Vec<usize> =
-            signing_key_index.into_iter().map(|e| e as usize).collect();
-        let msg = load_tx_hash()?;
-        validate_operation_history(&binary_did, history, signing_key_index, &msg, &final_sig)?;
-    }
+    let witness = new_witness()?;
+    let auth: PlcAuthorization = witness.transferred_from()?;
+
+    let binary_did = parse_staging_id(&staging_id)?;
+    // History contains DID operations which can be very large. Using Cursor for lazy reading
+    // to avoid loading the entire operation history into memory at once.
+    let history: Vec<Cursor> = auth.history()?.into_iter().collect();
+    let final_sig: Vec<u8> = auth.sig()?.try_into()?;
+    let signing_key_index: Vec<u8> = auth.signing_keys()?.try_into()?;
+    let signing_key_index: Vec<usize> = signing_key_index.into_iter().map(|e| e as usize).collect();
+    let msg = load_tx_hash()?;
+    validate_operation_history(&binary_did, history, signing_key_index, &msg, &final_sig)?;
+    #[cfg(feature = "enable_log")]
+    log::info!("validate operation history successfully");
 
     Ok(())
 }

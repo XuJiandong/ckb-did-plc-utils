@@ -10,7 +10,6 @@ pub enum Error {
     Molecule,
     InvalidDocumentCbor,
     MismatchedFrom,
-    MismatchedFrom2,
 }
 
 impl Display for Error {
@@ -74,7 +73,6 @@ impl Error {
             Error::Molecule => 51,
             Error::InvalidDocumentCbor => 52,
             Error::MismatchedFrom => 53,
-            Error::MismatchedFrom2 => 54,
         }
     }
 }

@@ -1,4 +1,4 @@
 packages:
   - "tools/gen-test-vectors"
-  - "ts-tests/ckb-did-plc-registry-tests"
+  - "ts-tests/did-web5-ts"
 

@@ -82,7 +82,7 @@ importers:
         specifier: ^11.0.4
         version: 11.0.4
 
-  ts-tests/ckb-did-plc-registry-tests:
+  ts-tests/did-web5-ts:
     dependencies:
       '@atproto/common':
         specifier: ~0.4.11
