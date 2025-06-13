@@ -8,7 +8,8 @@
   "scripts": {
     "build": "tsc",
     "format": "prettier --write .",
-    "test": "NODE_OPTIONS='--no-warnings' jest"
+    "test": "NODE_OPTIONS='--no-warnings' jest",
+    "cov": "mkdir -p coverage-data && CKB_COVERAGE=1 NODE_OPTIONS='--no-warnings' jest"
   },
   "devDependencies": {
     "@types/jest": "~29.5.14",

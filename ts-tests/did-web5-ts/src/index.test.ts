@@ -16,6 +16,7 @@ import {
 import path from "path";
 import { molecule, plc } from "./index";
 import * as uint8arrays from "uint8arrays";
+import { runCoverage } from "./coverage";
 
 export const DEFAULT_SCRIPT = path.join(
   __dirname,
@@ -133,11 +134,17 @@ async function main(
   }
 
   const verifier = Verifier.from(resource, tx);
-  if (shouldFail) {
-    await verifier.verifyFailure(undefined, false);
+  if (process.env.CKB_COVERAGE) {
+    const txFile = JSON.stringify(verifier.txFile());
+    runCoverage("type", "output", 0, txFile, shouldFail ?? false);
     return 0;
   } else {
-    return verifier.verifySuccess(true);
+    if (shouldFail) {
+      await verifier.verifyFailure(undefined, false);
+      return 0;
+    } else {
+      return verifier.verifySuccess(true);
+    }
   }
 }
 
