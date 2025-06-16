@@ -31,6 +31,7 @@ export type PlcOperationResult = {
 export async function generateOperations(config?: {
   moreOps?: boolean;
   invalidSignature?: boolean;
+  mismatchedHistory?: boolean;
 }): Promise<PlcOperationResult> {
   const ops: Operation[] = [];
   let key = await Secp256k1Keypair.create();
@@ -89,7 +90,9 @@ export async function generateOperations(config?: {
     ops.push(op3);
     signingKeys.push(0n);
   }
-
+  if (config?.mismatchedHistory) {
+    ops.pop();
+  }
   return {
     history: ops.map((op) => hexFrom(cbor.encode(op))),
     signingKeys,
@@ -107,5 +110,4 @@ export async function signDidWeb5(
   let signature = await keypair.sign(bytesFrom(msg));
   result.sig = hexFrom(signature);
   result.signingKeys.push(numFrom(signingKey));
-  console.assert(result.signingKeys.length === result.history.length + 1);
 }

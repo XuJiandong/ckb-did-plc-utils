@@ -3,4 +3,3 @@ target/
 dist/
 node_modules/
 build/
-coverage-data/

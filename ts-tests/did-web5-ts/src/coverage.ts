@@ -22,11 +22,17 @@ export function runCoverage(
   const args = fullArgs.split(" ");
   const result = spawnSync("ckb-debugger", args, config);
   if (shouldFail) {
-    console.assert(result.status !== 0, "Should fail, but succeeded");
-    console.log(`result.status = ${result.status}`)
+    if (result.status === 0) {
+      console.log(`${result.stdout}`);
+      console.log(`${result.stderr}`);
+    }
+    expect(result.status).toBeGreaterThan(0);
   } else {
-    console.assert(result.status === 0, "Should succeed, but failed");
-    console.log(`result.status = ${result.status}`)
+    if (result.status !== 0) {
+      console.log(`${result.stdout}`);
+      console.log(`${result.stderr}`);
+    }
+    expect(result.status).toBe(0);
   }
   return new ScriptVerificationResult(
     groupType,
