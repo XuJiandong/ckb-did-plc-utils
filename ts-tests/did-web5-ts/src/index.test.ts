@@ -66,6 +66,7 @@ async function main(
     false,
   );
   let transferredFrom: Hex | null = null;
+  let codeHashToRun: Hex | null = null;
 
   // cell data
   if (config?.noAssociatePlc) {
@@ -87,6 +88,7 @@ async function main(
     // script args
     let typeScript = script.clone();
     typeScript.args = hexFrom("0x" + "0".repeat(40));
+    codeHashToRun = typeScript.hash();
     const inputCell = resource.mockCell(
       alwaysSuccessScript,
       typeScript,
@@ -122,6 +124,7 @@ async function main(
     let typeScript = script.clone();
     let typeId = hashTypeId(tx.inputs[0], 0);
     typeScript.args = hexFrom(typeId.slice(0, config?.shortArgs ? 10 : 42)); // 20 bytes Type ID
+    codeHashToRun = typeScript.hash();
 
     let count = config?.outputCellCount ?? 1;
     for (let i = 0; i < count; i++) {
@@ -171,10 +174,12 @@ async function main(
     return 0;
   } else {
     if (shouldFail) {
-      await verifier.verifyFailure(undefined, false);
+      await verifier.verifyFailure(undefined, false, {
+        codeHash: codeHashToRun,
+      });
       return 0;
     } else {
-      return verifier.verifySuccess(true);
+      return verifier.verifySuccess(true, { codeHash: codeHashToRun });
     }
   }
 }
