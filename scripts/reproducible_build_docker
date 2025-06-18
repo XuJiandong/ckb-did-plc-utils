@@ -52,7 +52,7 @@ fi
 if [[ "${UPDATE}" = "yes" ]]; then
   TASKS+=" checksum CHECKSUM_FILE=${CHECKSUM_FILE_PATH} "
 else
-  TASKS+=" build "
+  TASKS+=" prepare build "
 fi
 
 $DOCKER run --rm $DOCKER_RUN_ARGS -v `pwd`:/code $DOCKER_IMAGE make $TASKS
