@@ -1,13 +1,15 @@
 {
-  "name": "ckb-did-plc-registry-tests",
+  "name": "did-web5-ts-tests",
   "version": "1.0.0",
   "description": "unit tests",
   "private": true,
   "type": "module",
   "sideEffects": false,
   "scripts": {
+    "build": "tsc",
     "format": "prettier --write .",
-    "test": "NODE_OPTIONS='--no-warnings' jest"
+    "test": "NODE_OPTIONS='--no-warnings' jest",
+    "cov": "mkdir -p coverage-data && CKB_COVERAGE=1 NODE_OPTIONS='--no-warnings' jest && genhtml coverage-data/*.lcov -o coverage_html"
   },
   "devDependencies": {
     "@types/jest": "~29.5.14",
@@ -19,7 +21,7 @@
     "@ckb-ccc/core": "~1.8.0",
     "@did-plc/lib": "~0.0.4",
     "@ipld/dag-cbor": "~7.0.3",
-    "ckb-testtool": "~1.0.1",
+    "ckb-testtool": "~1.0.2",
     "jest": "~29.7.0",
     "ts-jest": "~29.2.6",
     "uint8arrays": "~3.0.0"

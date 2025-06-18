@@ -72,10 +72,21 @@ test:
 	cargo test $(CARGO_ARGS)
 
 check:
-	cargo check $(CARGO_ARGS)
+	for contract in $(wildcard contracts/*); do \
+		$(MAKE) -e -C $$contract check; \
+	done; \
+	for crate in $(wildcard crates/*); do \
+		cargo check -p $$(basename $$crate) $(MODE_ARGS) $(CARGO_ARGS); \
+	done;
 
 clippy:
-	cargo clippy $(CARGO_ARGS)
+	for contract in $(wildcard contracts/*); do \
+		$(MAKE) -e -C $$contract clippy; \
+	done; \
+	for crate in $(wildcard crates/*); do \
+		cargo clippy -p $$(basename $$crate) $(MODE_ARGS) $(CARGO_ARGS); \
+	done;
+
 
 fmt:
 	cargo fmt $(CARGO_ARGS)

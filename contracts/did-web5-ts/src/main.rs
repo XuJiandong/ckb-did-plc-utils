@@ -3,14 +3,18 @@
 
 mod entry;
 mod error;
+mod molecules;
+mod type_id;
+
 ckb_std::entry!(program_entry);
-ckb_std::default_alloc!(16384, 1258306, 64);
+// 2M bytes
+ckb_std::default_alloc!(16384, 0x200000, 64);
 
 pub fn program_entry() -> i8 {
     #[cfg(feature = "enable_log")]
     {
         drop(ckb_std::logger::init());
-        log::info!("ckb-did-plc-registry, log enabled");
+        log::info!("did-web5-ts, log enabled");
     }
     match entry::entry() {
         Ok(_) => 0,
