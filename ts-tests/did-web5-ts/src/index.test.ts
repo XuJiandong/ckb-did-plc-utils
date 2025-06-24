@@ -6,6 +6,10 @@ import {
   hashTypeId,
   bytesFrom,
   WitnessArgs,
+  numFrom,
+  OutPoint,
+  CellOutput,
+  Cell,
 } from "@ckb-ccc/core";
 import { readFileSync } from "fs";
 import {
@@ -241,5 +245,162 @@ describe("did-web5-ts", () => {
   test("it should reject an operation with mismatched history length", async () => {
     let result = await plc.generateOperations({ mismatchedHistory: true });
     await main(result, {}, true);
+  });
+
+  test("it should re-create the spec example", async () => {
+    let previousTxHash: Hex =
+      "0x1ecbf88d692a14d7cbc0bfd1a3d5019e4b613247ae438bad52f94148c6009559";
+    const did = "0x8434cfe81aa825c275d513eee20e4235294e3420";
+
+    const resource = Resource.default();
+    resource.cellOutpointHash = previousTxHash;
+    const baseTx = Transaction.default();
+    const typeScript = resource.deployCell(DEFAULT_SCRIPT_HEX, baseTx, true);
+    typeScript.args = did;
+    const alwaysSuccessScript = resource.deployCell(
+      ALWAYS_SUCCESS_HEX,
+      baseTx,
+      true,
+    );
+
+    const doc0 = {
+      verificationMethods: {
+        atproto: "did:key:zSigningKey",
+      },
+      alsoKnownAs: ["at://alice.test"],
+      services: {
+        atproto_pds: {
+          type: "AtprotoPersonalDataServer",
+          endpoint: "https://example.test",
+        },
+      },
+    };
+    const doc1 = {
+      verificationMethods: {
+        atproto: "did:key:zSigningKey",
+      },
+      alsoKnownAs: ["at://bob.test"],
+      services: {
+        atproto_pds: {
+          type: "AtprotoPersonalDataServer",
+          endpoint: "https://example.test",
+        },
+      },
+    };
+
+    const didWeb5Data0 = molecule.DidWeb5Data.from({
+      value: {
+        document: cbor.encode(doc0),
+        localId: null,
+      },
+    });
+    const didWeb5Data1 = molecule.DidWeb5Data.from({
+      value: {
+        document: cbor.encode(doc1),
+        localId: null,
+      },
+    });
+
+    expect(didWeb5Data0).toMatchSnapshot("data0");
+    expect(didWeb5Data1).toMatchSnapshot("data1");
+
+    const jsonify = (obj: any) =>
+      JSON.parse(
+        JSON.stringify(
+          obj,
+          (_, value) =>
+            typeof value === "bigint" ? `0x${value.toString(16)}` : value,
+          2,
+        ),
+      );
+
+    // Creation Example
+    {
+      const tx = Transaction.default();
+      tx.cellDeps = baseTx.cellDeps;
+      const inputCell = resource.mockCell(alwaysSuccessScript);
+      tx.inputs.push(Resource.createCellInput(inputCell));
+
+      const typeId = hashTypeId(tx.inputs[0], 0);
+      typeScript.args = hexFrom(typeId.slice(0, 42)); // 20 bytes Type ID
+      expect(hexFrom(typeId.slice(0, 42))).toBe(did);
+
+      tx.outputs.push(
+        Resource.createCellOutput(
+          alwaysSuccessScript,
+          typeScript,
+          numFrom(600),
+        ),
+      );
+      tx.outputsData.push(hexFrom(didWeb5Data0.toBytes()));
+
+      const verifier = Verifier.from(resource, tx);
+      const txJson = jsonify(tx);
+
+      expect(tx.hash()).toMatchSnapshot("creation-tx-hash");
+      expect(txJson).toMatchSnapshot("creation-tx");
+      verifier.verifySuccess(true, { codeHash: typeScript.hash() });
+
+      previousTxHash = tx.hash();
+    }
+
+    // Update Example
+    {
+      const tx = Transaction.default();
+      tx.cellDeps = baseTx.cellDeps;
+
+      const inputCell = new Cell(
+        new OutPoint(previousTxHash, numFrom(0)),
+        new CellOutput(numFrom(600), alwaysSuccessScript, typeScript),
+        hexFrom(didWeb5Data0.toBytes()),
+      );
+      resource.cells.set(inputCell.outPoint.toBytes().toString(), inputCell);
+      tx.inputs.push(Resource.createCellInput(inputCell));
+
+      tx.outputs.push(
+        Resource.createCellOutput(
+          alwaysSuccessScript,
+          typeScript,
+          numFrom(599),
+        ),
+      );
+      tx.outputsData.push(hexFrom(didWeb5Data1.toBytes()));
+
+      const verifier = Verifier.from(resource, tx);
+      const txJson = jsonify(tx);
+
+      expect(tx.hash()).toMatchSnapshot("update-tx-hash");
+      expect(txJson).toMatchSnapshot("update-tx");
+      verifier.verifySuccess(true, { codeHash: typeScript.hash() });
+
+      previousTxHash = tx.hash();
+    }
+
+    // Deactivation Example
+    {
+      const tx = Transaction.default();
+      tx.cellDeps = baseTx.cellDeps;
+
+      const inputCell = new Cell(
+        new OutPoint(previousTxHash, numFrom(0)),
+        new CellOutput(numFrom(599), alwaysSuccessScript, typeScript),
+        hexFrom(didWeb5Data1.toBytes()),
+      );
+      resource.cells.set(inputCell.outPoint.toBytes().toString(), inputCell);
+      tx.inputs.push(Resource.createCellInput(inputCell));
+
+      tx.outputs.push(
+        Resource.createCellOutput(alwaysSuccessScript, undefined, numFrom(598)),
+      );
+      tx.outputsData.push("0x");
+
+      const verifier = Verifier.from(resource, tx);
+      const txJson = jsonify(tx);
+
+      expect(txJson).toMatchSnapshot("deactivation-tx");
+      verifier.verifySuccess(true, { codeHash: typeScript.hash() });
+
+      previousTxHash = tx.hash();
+    }
   });
 });

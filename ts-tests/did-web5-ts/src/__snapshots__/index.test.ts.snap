@@ -1,0 +1,173 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`did-web5-ts it should re-create the spec example: creation-tx 1`] = `
+{
+  "cellDeps": [
+    {
+      "depType": "code",
+      "outPoint": {
+        "index": "0x0",
+        "txHash": "0x1ecbf88d692a14d7cbc0bfd1a3d5019e4b613247ae438bad52f94148c6009559",
+      },
+    },
+    {
+      "depType": "code",
+      "outPoint": {
+        "index": "0x1",
+        "txHash": "0x1ecbf88d692a14d7cbc0bfd1a3d5019e4b613247ae438bad52f94148c6009559",
+      },
+    },
+  ],
+  "headerDeps": [],
+  "inputs": [
+    {
+      "previousOutput": {
+        "index": "0x2",
+        "txHash": "0x1ecbf88d692a14d7cbc0bfd1a3d5019e4b613247ae438bad52f94148c6009559",
+      },
+      "since": "0x0",
+    },
+  ],
+  "outputs": [
+    {
+      "capacity": "0x258",
+      "lock": {
+        "args": "0x",
+        "codeHash": "0x3dc9cdb5b2dcff8d4999004406558d4456ecf0f14c757ca353684c0bd4d3b50d",
+        "hashType": "type",
+      },
+      "type": {
+        "args": "0x8434cfe81aa825c275d513eee20e4235294e3420",
+        "codeHash": "0xb95123c71a870e3f0f74a7ee1dab8268dbfbc1407b46733ebd1b41f854b4324a",
+        "hashType": "type",
+      },
+    },
+  ],
+  "outputsData": [
+    "0x00000000b40000000c000000b4000000a4000000a3687365727669636573a16b617470726f746f5f706473a264747970657819417470726f746f506572736f6e616c4461746153657276657268656e64706f696e747468747470733a2f2f6578616d706c652e746573746b616c736f4b6e6f776e4173816f61743a2f2f616c6963652e7465737473766572696669636174696f6e4d6574686f6473a167617470726f746f736469643a6b65793a7a5369676e696e674b6579",
+  ],
+  "version": "0x0",
+  "witnesses": [],
+}
+`;
+
+exports[`did-web5-ts it should re-create the spec example: creation-tx-hash 1`] = `"0xe54bb705cea6e500767ed4c0ba9ee92cad71e6b39c55283591147c5d10cc12b5"`;
+
+exports[`did-web5-ts it should re-create the spec example: data0 1`] = `
+Extended {
+  "type": "DidWeb5DataV1",
+  "value": Extended {
+    "document": "0xa3687365727669636573a16b617470726f746f5f706473a264747970657819417470726f746f506572736f6e616c4461746153657276657268656e64706f696e747468747470733a2f2f6578616d706c652e746573746b616c736f4b6e6f776e4173816f61743a2f2f616c6963652e7465737473766572696669636174696f6e4d6574686f6473a167617470726f746f736469643a6b65793a7a5369676e696e674b6579",
+    "localId": undefined,
+  },
+}
+`;
+
+exports[`did-web5-ts it should re-create the spec example: data1 1`] = `
+Extended {
+  "type": "DidWeb5DataV1",
+  "value": Extended {
+    "document": "0xa3687365727669636573a16b617470726f746f5f706473a264747970657819417470726f746f506572736f6e616c4461746153657276657268656e64706f696e747468747470733a2f2f6578616d706c652e746573746b616c736f4b6e6f776e4173816d61743a2f2f626f622e7465737473766572696669636174696f6e4d6574686f6473a167617470726f746f736469643a6b65793a7a5369676e696e674b6579",
+    "localId": undefined,
+  },
+}
+`;
+
+exports[`did-web5-ts it should re-create the spec example: deactivation-tx 1`] = `
+{
+  "cellDeps": [
+    {
+      "depType": "code",
+      "outPoint": {
+        "index": "0x0",
+        "txHash": "0x1ecbf88d692a14d7cbc0bfd1a3d5019e4b613247ae438bad52f94148c6009559",
+      },
+    },
+    {
+      "depType": "code",
+      "outPoint": {
+        "index": "0x1",
+        "txHash": "0x1ecbf88d692a14d7cbc0bfd1a3d5019e4b613247ae438bad52f94148c6009559",
+      },
+    },
+  ],
+  "headerDeps": [],
+  "inputs": [
+    {
+      "previousOutput": {
+        "index": "0x0",
+        "txHash": "0x781140553ba39702e39f6d8c851512549c7b930e1cb34200ab2e1b73354eccbb",
+      },
+      "since": "0x0",
+    },
+  ],
+  "outputs": [
+    {
+      "capacity": "0x256",
+      "lock": {
+        "args": "0x",
+        "codeHash": "0x3dc9cdb5b2dcff8d4999004406558d4456ecf0f14c757ca353684c0bd4d3b50d",
+        "hashType": "type",
+      },
+    },
+  ],
+  "outputsData": [
+    "0x",
+  ],
+  "version": "0x0",
+  "witnesses": [],
+}
+`;
+
+exports[`did-web5-ts it should re-create the spec example: update-tx 1`] = `
+{
+  "cellDeps": [
+    {
+      "depType": "code",
+      "outPoint": {
+        "index": "0x0",
+        "txHash": "0x1ecbf88d692a14d7cbc0bfd1a3d5019e4b613247ae438bad52f94148c6009559",
+      },
+    },
+    {
+      "depType": "code",
+      "outPoint": {
+        "index": "0x1",
+        "txHash": "0x1ecbf88d692a14d7cbc0bfd1a3d5019e4b613247ae438bad52f94148c6009559",
+      },
+    },
+  ],
+  "headerDeps": [],
+  "inputs": [
+    {
+      "previousOutput": {
+        "index": "0x0",
+        "txHash": "0xe54bb705cea6e500767ed4c0ba9ee92cad71e6b39c55283591147c5d10cc12b5",
+      },
+      "since": "0x0",
+    },
+  ],
+  "outputs": [
+    {
+      "capacity": "0x257",
+      "lock": {
+        "args": "0x",
+        "codeHash": "0x3dc9cdb5b2dcff8d4999004406558d4456ecf0f14c757ca353684c0bd4d3b50d",
+        "hashType": "type",
+      },
+      "type": {
+        "args": "0x8434cfe81aa825c275d513eee20e4235294e3420",
+        "codeHash": "0xb95123c71a870e3f0f74a7ee1dab8268dbfbc1407b46733ebd1b41f854b4324a",
+        "hashType": "type",
+      },
+    },
+  ],
+  "outputsData": [
+    "0x00000000b20000000c000000b2000000a2000000a3687365727669636573a16b617470726f746f5f706473a264747970657819417470726f746f506572736f6e616c4461746153657276657268656e64706f696e747468747470733a2f2f6578616d706c652e746573746b616c736f4b6e6f776e4173816d61743a2f2f626f622e7465737473766572696669636174696f6e4d6574686f6473a167617470726f746f736469643a6b65793a7a5369676e696e674b6579",
+  ],
+  "version": "0x0",
+  "witnesses": [],
+}
+`;
+
+exports[`did-web5-ts it should re-create the spec example: update-tx-hash 1`] = `"0x781140553ba39702e39f6d8c851512549c7b930e1cb34200ab2e1b73354eccbb"`;
