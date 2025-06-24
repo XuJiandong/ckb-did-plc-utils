@@ -291,7 +291,7 @@ impl From<Cursor> for DidWeb5Witness {
     }
 }
 impl DidWeb5Witness {
-    pub fn transferred_from(&self) -> Result<PlcAuthorization, Error> {
+    pub fn local_id_authorization(&self) -> Result<PlcAuthorization, Error> {
         let cur = self.cursor.table_slice_by_index(0usize)?;
         Ok(cur.into())
     }
@@ -299,7 +299,7 @@ impl DidWeb5Witness {
 impl DidWeb5Witness {
     pub fn verify(&self, compatible: bool) -> Result<(), Error> {
         self.cursor.verify_table(1usize, compatible)?;
-        self.transferred_from()?.verify(compatible)?;
+        self.local_id_authorization()?.verify(compatible)?;
         Ok(())
     }
 }

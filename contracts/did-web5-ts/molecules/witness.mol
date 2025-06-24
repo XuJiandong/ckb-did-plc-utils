@@ -5,11 +5,11 @@ vector BytesVec <Bytes>;
 table PlcAuthorization {
     history: BytesVec,
     sig: Bytes,
-    signingKeys: Uint8Vec,
+    signing_keys: Uint8Vec,
 }
 
 table DidWeb5Witness {
-    transferredFrom: PlcAuthorization,
+    local_id_authorization: PlcAuthorization,
 }
 
 option BytesOpt (Bytes);
