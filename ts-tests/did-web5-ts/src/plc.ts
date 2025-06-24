@@ -32,11 +32,15 @@ export async function generateOperations(config?: {
   moreOps?: boolean;
   invalidSignature?: boolean;
   mismatchedHistory?: boolean;
+  key?: Secp256k1Keypair;
+  rotationKey1?: Secp256k1Keypair;
+  rotationKey2?: P256Keypair;
 }): Promise<PlcOperationResult> {
   const ops: Operation[] = [];
-  let key = await Secp256k1Keypair.create();
-  let rotationKey1 = await Secp256k1Keypair.create();
-  let rotationKey2 = await P256Keypair.create();
+  const key = config?.key ?? (await Secp256k1Keypair.create());
+  const rotationKey1 =
+    config?.rotationKey1 ?? (await Secp256k1Keypair.create());
+  const rotationKey2 = config?.rotationKey2 ?? (await P256Keypair.create());
   let handle = "at://alice.example.com";
   let atpPds = "https://example.com";
   let binaryDid: Hex = "0x";

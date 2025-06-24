@@ -21,6 +21,7 @@ import path from "path";
 import { molecule, plc } from "./index";
 import * as uint8arrays from "uint8arrays";
 import { runCoverage } from "./coverage";
+import { P256Keypair, Secp256k1Keypair } from "@atproto/crypto";
 
 if (process.env.CKB_COVERAGE) {
   console.log(
@@ -44,6 +45,17 @@ function newStagingId(binaryDid: Hex): Hex {
   let did = bytesFrom(binaryDid);
   let str = "web5:plc:" + uint8arrays.toString(did, "base32");
   return hexFrom(uint8arrays.fromString(str, "utf8"));
+}
+
+function jsonify(obj: any): any {
+  return JSON.parse(
+    JSON.stringify(
+      obj,
+      (_, value) =>
+        typeof value === "bigint" ? `0x${value.toString(16)}` : value,
+      2,
+    ),
+  );
 }
 
 async function main(
@@ -304,16 +316,6 @@ describe("did-web5-ts", () => {
     expect(didWeb5Data0).toMatchSnapshot("data0");
     expect(didWeb5Data1).toMatchSnapshot("data1");
 
-    const jsonify = (obj: any) =>
-      JSON.parse(
-        JSON.stringify(
-          obj,
-          (_, value) =>
-            typeof value === "bigint" ? `0x${value.toString(16)}` : value,
-          2,
-        ),
-      );
-
     // Creation Example
     {
       const tx = Transaction.default();
@@ -402,5 +404,101 @@ describe("did-web5-ts", () => {
 
       previousTxHash = tx.hash();
     }
+  });
+
+  test("it should re-create the local id extension example", async () => {
+    const previousTxHash: Hex =
+      "0x1ecbf88d692a14d7cbc0bfd1a3d5019e4b613247ae438bad52f94148c6009559";
+    const did = "0x8434cfe81aa825c275d513eee20e4235294e3420";
+
+    const key = await Secp256k1Keypair.import(
+      "32288e73ba3cc99b0d2499f20c08cf4ef90d4f4f914ce21221d81a386bbc7e44",
+    );
+    const rotationKey1 = await Secp256k1Keypair.import(
+      "1f8b611642074eac6733331e2120de2a83e983775391706649abefc2995bae73",
+    );
+    let rotationKey2 = await P256Keypair.import(
+      "e7d9916064bcf1c5e80ef5882f84171dc0a46fb7c40f5b29a671f9155e172482",
+    );
+
+    const migration = await plc.generateOperations({
+      key,
+      rotationKey1,
+      rotationKey2,
+    });
+    const localId = newStagingId(migration.binaryDid);
+    expect(uint8arrays.toString(bytesFrom(localId))).toMatchSnapshot(
+      "local-id",
+    );
+
+    const resource = Resource.default();
+    resource.cellOutpointHash = previousTxHash;
+    const tx = Transaction.default();
+    const typeScript = resource.deployCell(DEFAULT_SCRIPT_HEX, tx, true);
+    typeScript.args = did;
+    const alwaysSuccessScript = resource.deployCell(
+      ALWAYS_SUCCESS_HEX,
+      tx,
+      true,
+    );
+
+    const doc = {
+      verificationMethods: {
+        atproto: "did:key:zSigningKey",
+      },
+      alsoKnownAs: ["at://alice.test"],
+      services: {
+        atproto_pds: {
+          type: "AtprotoPersonalDataServer",
+          endpoint: "https://example.test",
+        },
+      },
+    };
+    const didWeb5Data = molecule.DidWeb5Data.from({
+      value: {
+        document: cbor.encode(doc),
+        localId,
+      },
+    });
+
+    // Migration Example
+    const inputCell = resource.mockCell(alwaysSuccessScript);
+    tx.inputs.push(Resource.createCellInput(inputCell));
+
+    const typeId = hashTypeId(tx.inputs[0], 0);
+    typeScript.args = hexFrom(typeId.slice(0, 42)); // 20 bytes Type ID
+    expect(hexFrom(typeId.slice(0, 42))).toBe(did);
+
+    tx.outputs.push(
+      Resource.createCellOutput(alwaysSuccessScript, typeScript, numFrom(600)),
+    );
+    tx.outputsData.push(hexFrom(didWeb5Data.toBytes()));
+
+    await plc.signDidWeb5(migration, 0, tx.hash());
+    expect(migration.sig).toBeTruthy();
+    if (!migration.sig) {
+      throw new Error("Signature is required");
+    }
+    expect(cbor.decode(bytesFrom(migration.history[0]!))).toMatchSnapshot(
+      "plc-genesis-op",
+    );
+    const web5Witness = molecule.DidWeb5Witness.from({
+      localIdAuthorization: {
+        history: migration.history,
+        sig: migration.sig,
+        signingKeys: migration.signingKeys,
+      },
+    });
+    expect(jsonify(web5Witness)).toMatchSnapshot("witness");
+    let witnessArgs = WitnessArgs.from({
+      outputType: web5Witness.toBytes(),
+    });
+    tx.setWitnessArgsAt(0, witnessArgs);
+    const verifier = Verifier.from(resource, tx);
+    const txJson = jsonify(tx);
+
+    expect(tx.hash()).toMatchSnapshot("local-id-migration-tx-hash");
+    expect(txJson).toMatchSnapshot("local-id-migration-tx");
+    verifier.verifySuccess(true, { codeHash: typeScript.hash() });
   });
 });
