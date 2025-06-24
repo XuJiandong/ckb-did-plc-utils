@@ -41,7 +41,7 @@ export const ALWAYS_SUCCESS_HEX = hexFrom(
   readFileSync(DEFAULT_SCRIPT_ALWAYS_SUCCESS),
 );
 
-function newStagingId(binaryDid: Hex): Hex {
+function newLocalId(binaryDid: Hex): Hex {
   let did = bytesFrom(binaryDid);
   let str = "web5:plc:" + uint8arrays.toString(did, "base32");
   return hexFrom(uint8arrays.fromString(str, "utf8"));
@@ -65,7 +65,7 @@ async function main(
     outputCellCount?: number;
     noAssociatePlc?: boolean;
     update?: boolean;
-    updateStagingId?: boolean;
+    updateLocalId?: boolean;
     invalidSignature?: boolean;
     shortArgs?: boolean;
     invalidCbor?: boolean;
@@ -88,7 +88,7 @@ async function main(
   if (config?.noAssociatePlc) {
     transferredFrom = null;
   } else {
-    transferredFrom = newStagingId(result.binaryDid);
+    transferredFrom = newLocalId(result.binaryDid);
   }
   // When testing invalid CBOR scenarios, use "0x82" which represents a CBOR array
   // expecting 2 elements but provides none, making it invalid CBOR format
@@ -100,7 +100,7 @@ async function main(
     },
   });
 
-  if (config?.update || config?.updateStagingId) {
+  if (config?.update || config?.updateLocalId) {
     // script args
     let typeScript = script.clone();
     typeScript.args = hexFrom("0x" + "0".repeat(40));
@@ -121,8 +121,8 @@ async function main(
         Resource.createCellOutput(alwaysSuccessScript, typeScript),
       );
       let newDidWeb5Data = didWeb5Data.clone();
-      if (config?.updateStagingId) {
-        newDidWeb5Data.value.localId = hexFrom(newStagingId("0x00"));
+      if (config?.updateLocalId) {
+        newDidWeb5Data.value.localId = hexFrom(newLocalId("0x00"));
       } else {
         newDidWeb5Data.value.document = hexFrom(
           cbor.encode({ key: "hello, world" }),
@@ -242,9 +242,9 @@ describe("did-web5-ts", () => {
     let result = await plc.generateOperations();
     await main(result, { update: true, outputCellCount: 0 });
   });
-  test("it should reject an update with staging id changed", async () => {
+  test("it should reject an update with local id changed", async () => {
     let result = await plc.generateOperations();
-    await main(result, { updateStagingId: true }, true);
+    await main(result, { updateLocalId: true }, true);
   });
   test("it should reject a genesis operation with associated did:plc and invalid signature", async () => {
     let result = await plc.generateOperations();

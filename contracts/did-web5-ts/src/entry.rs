@@ -3,7 +3,7 @@ use crate::molecules::{new_data, new_witness, PlcAuthorization};
 use crate::type_id::{check_type_id, is_cell_present};
 use alloc::vec::Vec;
 use ckb_did_plc_utils::{
-    operation::{parse_staging_id, validate_operation_history},
+    operation::{parse_local_id, validate_operation_history},
     reader::validate_cbor_format,
 };
 use ckb_std::{ckb_constants::Source, high_level::load_tx_hash};
@@ -14,18 +14,18 @@ fn mint() -> Result<(), Error> {
     // validate cbor format
     validate_cbor_format(data.document()?)?;
 
-    let staging_id = data.local_id()?;
-    // Allow empty staging ID - this indicates the cell has no associated did:plc
+    let local_id = data.local_id()?;
+    // Allow empty local ID - this indicates the cell has no associated did:plc
     // and can be minted without requiring did:plc authorization
-    if staging_id.is_none() {
+    if local_id.is_none() {
         return Ok(());
     }
-    let staging_id: Vec<u8> = staging_id.unwrap().try_into()?;
+    let local_id: Vec<u8> = local_id.unwrap().try_into()?;
 
     let witness = new_witness()?;
     let auth: PlcAuthorization = witness.local_id_authorization()?;
 
-    let binary_did = parse_staging_id(&staging_id)?;
+    let binary_did = parse_local_id(&local_id)?;
     // History contains DID operations which can be very large. Using Cursor for lazy reading
     // to avoid loading the entire operation history into memory at once.
     let history: Vec<Cursor> = auth.history()?.into_iter().collect();

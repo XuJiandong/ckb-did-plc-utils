@@ -20,12 +20,12 @@ use sha2::{Digest, Sha256};
 use crate::error::Error;
 use crate::pubkey::PublicKey;
 
-// this is the only one valid staging id so far
-const STAGING_ID_PREFIX: &str = "web5:plc:";
+// this is the only one valid local id so far
+const LOCAL_ID_PREFIX: &str = "web5:plc:";
 
-pub fn parse_staging_id(id: &[u8]) -> Result<Vec<u8>, Error> {
+pub fn parse_local_id(id: &[u8]) -> Result<Vec<u8>, Error> {
     let str = core::str::from_utf8(id).map_err(|_| Error::InvalidDidFormat)?;
-    if let Some(str) = str.strip_prefix(STAGING_ID_PREFIX) {
+    if let Some(str) = str.strip_prefix(LOCAL_ID_PREFIX) {
         base32::decode(Alphabet::Rfc4648Lower { padding: false }, str)
             .ok_or(Error::InvalidDidFormat)
     } else {
