@@ -4,7 +4,7 @@ option StringOpt (String);
 
 table DidWeb5DataV1 {
     document: Bytes,
-    transferredFrom: StringOpt,
+    local_id: StringOpt,
 }
 
 union DidWeb5Data {

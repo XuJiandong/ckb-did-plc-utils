@@ -189,7 +189,7 @@ impl DidWeb5DataV1 {
     }
 }
 impl DidWeb5DataV1 {
-    pub fn transferred_from(&self) -> Result<Option<Cursor>, Error> {
+    pub fn local_id(&self) -> Result<Option<Cursor>, Error> {
         let cur = self.cursor.table_slice_by_index(1usize)?;
         if cur.option_is_none() {
             Ok(None)

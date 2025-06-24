@@ -10,17 +10,17 @@ import {
 
 // table DidWeb5DataV1 {
 //     document: Bytes,
-//     transferredFrom: StringOpt,
+//     localId: StringOpt,
 // }
 export type DidWeb5DataV1Like = {
   document: HexLike;
-  transferredFrom?: HexLike | null;
+  localId?: HexLike | null;
 };
 
 @mol.codec(
   mol.table({
     document: mol.Bytes,
-    transferredFrom: mol.BytesOpt,
+    localId: mol.BytesOpt,
   }),
 )
 export class DidWeb5DataV1 extends mol.Entity.Base<
@@ -29,7 +29,7 @@ export class DidWeb5DataV1 extends mol.Entity.Base<
 >() {
   constructor(
     public document: Hex,
-    public transferredFrom?: Hex,
+    public localId?: Hex,
   ) {
     super();
   }
@@ -40,7 +40,7 @@ export class DidWeb5DataV1 extends mol.Entity.Base<
     }
     return new DidWeb5DataV1(
       hexFrom(data.document),
-      data.transferredFrom ? hexFrom(data.transferredFrom) : undefined,
+      data.localId ? hexFrom(data.localId) : undefined,
     );
   }
 }
@@ -120,23 +120,23 @@ export class PlcAuthorization extends mol.Entity.Base<
 }
 
 // table DidWeb5Witness {
-//   transferredFrom: PlcAuthorization,
+//   localIdAuthorization: PlcAuthorization,
 // }
 
 export type DidWeb5WitnessLike = {
-  transferredFrom: PlcAuthorizationLike;
+  localIdAuthorization: PlcAuthorizationLike;
 };
 
 @mol.codec(
   mol.table({
-    transferredFrom: PlcAuthorization,
+    localIdAuthorization: PlcAuthorization,
   }),
 )
 export class DidWeb5Witness extends mol.Entity.Base<
   DidWeb5WitnessLike,
   DidWeb5Witness
 >() {
-  constructor(public transferredFrom: PlcAuthorization) {
+  constructor(public localIdAuthorization: PlcAuthorization) {
     super();
   }
 
@@ -144,6 +144,6 @@ export class DidWeb5Witness extends mol.Entity.Base<
     if (data instanceof DidWeb5Witness) {
       return data;
     }
-    return new DidWeb5Witness(PlcAuthorization.from(data.transferredFrom));
+    return new DidWeb5Witness(PlcAuthorization.from(data.localIdAuthorization));
   }
 }

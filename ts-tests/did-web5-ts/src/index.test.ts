@@ -80,7 +80,7 @@ async function main(
   let didWeb5Data = molecule.DidWeb5Data.from({
     value: {
       document: cborData,
-      transferredFrom,
+      localId: transferredFrom,
     },
   });
 
@@ -106,7 +106,7 @@ async function main(
       );
       let newDidWeb5Data = didWeb5Data.clone();
       if (config?.updateStagingId) {
-        newDidWeb5Data.value.transferredFrom = hexFrom(newStagingId("0x00"));
+        newDidWeb5Data.value.localId = hexFrom(newStagingId("0x00"));
       } else {
         newDidWeb5Data.value.document = hexFrom(
           cbor.encode({ key: "hello, world" }),
@@ -148,7 +148,7 @@ async function main(
       throw new Error("Signature is required");
     }
     let web5Witness = molecule.DidWeb5Witness.from({
-      transferredFrom: {
+      localIdAuthorization: {
         history: result.history,
         sig: result.sig,
         signingKeys: result.signingKeys,

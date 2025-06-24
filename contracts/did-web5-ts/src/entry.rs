@@ -14,7 +14,7 @@ fn mint() -> Result<(), Error> {
     // validate cbor format
     validate_cbor_format(data.document()?)?;
 
-    let staging_id = data.transferred_from()?;
+    let staging_id = data.local_id()?;
     // Allow empty staging ID - this indicates the cell has no associated did:plc
     // and can be minted without requiring did:plc authorization
     if staging_id.is_none() {
@@ -23,7 +23,7 @@ fn mint() -> Result<(), Error> {
     let staging_id: Vec<u8> = staging_id.unwrap().try_into()?;
 
     let witness = new_witness()?;
-    let auth: PlcAuthorization = witness.transferred_from()?;
+    let auth: PlcAuthorization = witness.local_id_authorization()?;
 
     let binary_did = parse_staging_id(&staging_id)?;
     // History contains DID operations which can be very large. Using Cursor for lazy reading
@@ -49,12 +49,12 @@ fn update() -> Result<(), Error> {
     validate_cbor_format(prev_data.document()?)?;
 
     let prev_from: Vec<Vec<u8>> = prev_data
-        .transferred_from()?
+        .local_id()?
         .into_iter()
         .map(|c| c.try_into().map_err(|_| Error::Molecule))
         .collect::<Result<Vec<_>, _>>()?;
     let cur_from: Vec<Vec<u8>> = cur_data
-        .transferred_from()?
+        .local_id()?
         .into_iter()
         .map(|c| c.try_into().map_err(|_| Error::Molecule))
         .collect::<Result<Vec<_>, _>>()?;
