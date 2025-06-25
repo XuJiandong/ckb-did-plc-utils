@@ -389,6 +389,26 @@ fn validate_final_operation(
     Ok(())
 }
 
+/// Validates a complete DID PLC operation history chain and final authorization signature.
+///
+/// This function performs comprehensive validation of a DID PLC operation history,
+/// ensuring the integrity and authenticity of the entire operation chain from genesis
+/// to the final on-chain authorization.
+///
+/// # Parameters
+///
+/// * `binary_did` - The expected binary DID identifier (15 bytes) that should match
+///   the DID derived from the genesis operation
+/// * `history` - A vector of operation cursors representing the complete operation
+///   history chain, starting with the genesis operation
+/// * `signing_keys_index` - A vector of signing key indices used for signature verification.
+///   The length must be `history.len() + 1` where:
+///   - `signing_keys_index[0]`: Index for genesis operation signature
+///   - `signing_keys_index[1..history_len]`: Indices for transitions between operations
+///   - `signing_keys_index[history_len]`: Index for final authorization signature
+/// * `msg` - The message that was signed for the final authorization
+/// * `final_sig` - The signature authorizing the DID PLC operation on-chain
+///
 pub fn validate_operation_history(
     binary_did: &[u8],
     history: Vec<Cursor>,

@@ -426,7 +426,7 @@ describe("did-web5-ts", () => {
       rotationKey1,
       rotationKey2,
     });
-    const localId = newStagingId(migration.binaryDid);
+    const localId = newLocalId(migration.binaryDid);
     expect(uint8arrays.toString(bytesFrom(localId))).toMatchSnapshot(
       "local-id",
     );
