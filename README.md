@@ -1,3 +1,3 @@
-# DID PLC Registry on CKB
-
-[DID PLC Registry on CKB](https://awesome-web5.notion.site/DID-PLC-Registry-on-CKB-RFC-1e48f0d3781e80e6a01adeaf459112c9)
+# did:web5 Method
+Implementation of [did:web5 Method](https://awesome-web5.notion.site/did-web5-Method-Specification-V0-1-2178f0d3781e805ca53beb5948f727cc)
+and [did:web5 Method Local ID Extension ](https://awesome-web5.notion.site/did-web5-Method-Local-ID-Extension-V0-1-21b8f0d3781e805a89b8e14ba6900530)

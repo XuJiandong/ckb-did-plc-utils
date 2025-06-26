@@ -20,12 +20,12 @@ use sha2::{Digest, Sha256};
 use crate::error::Error;
 use crate::pubkey::PublicKey;
 
-// this is the only one valid staging id so far
-const STAGING_ID_PREFIX: &str = "web5:plc:";
+// this is the only one valid local id so far
+const LOCAL_ID_PREFIX: &str = "web5:plc:";
 
-pub fn parse_staging_id(id: &[u8]) -> Result<Vec<u8>, Error> {
+pub fn parse_local_id(id: &[u8]) -> Result<Vec<u8>, Error> {
     let str = core::str::from_utf8(id).map_err(|_| Error::InvalidDidFormat)?;
-    if let Some(str) = str.strip_prefix(STAGING_ID_PREFIX) {
+    if let Some(str) = str.strip_prefix(LOCAL_ID_PREFIX) {
         base32::decode(Alphabet::Rfc4648Lower { padding: false }, str)
             .ok_or(Error::InvalidDidFormat)
     } else {
@@ -389,6 +389,26 @@ fn validate_final_operation(
     Ok(())
 }
 
+/// Validates a complete DID PLC operation history chain and final authorization signature.
+///
+/// This function performs comprehensive validation of a DID PLC operation history,
+/// ensuring the integrity and authenticity of the entire operation chain from genesis
+/// to the final on-chain authorization.
+///
+/// # Parameters
+///
+/// * `binary_did` - The expected binary DID identifier (15 bytes) that should match
+///   the DID derived from the genesis operation
+/// * `history` - A vector of operation cursors representing the complete operation
+///   history chain, starting with the genesis operation
+/// * `signing_keys_index` - A vector of signing key indices used for signature verification.
+///   The length must be `history.len() + 1` where:
+///   - `signing_keys_index[0]`: Index for genesis operation signature
+///   - `signing_keys_index[1..history_len]`: Indices for transitions between operations
+///   - `signing_keys_index[history_len]`: Index for final authorization signature
+/// * `msg` - The message that was signed for the final authorization
+/// * `final_sig` - The signature authorizing the DID PLC operation on-chain
+///
 pub fn validate_operation_history(
     binary_did: &[u8],
     history: Vec<Cursor>,
