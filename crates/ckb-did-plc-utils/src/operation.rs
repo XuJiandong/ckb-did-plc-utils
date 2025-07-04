@@ -168,7 +168,7 @@ impl Operation {
         }
         Err(Error::RotationKeysDecodeError)
     }
-    // "signingKey" and "signingKey" are both used as rotation keys for legacy operation
+    // "signingKey" and "recoveryKey" are both used as rotation keys for legacy operation
     pub(crate) fn get_legacy_rotation_keys(&self) -> Result<Vec<PublicKey>, Error> {
         let mut pubkeys = vec![];
         if let Value::Map(map) = &self.raw {
