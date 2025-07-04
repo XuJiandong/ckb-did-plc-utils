@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`did-web5-ts it should re-create the local id extension example: local-id 1`] = `"web5:plc:bxvfvvygwbcnbmknn73t6pbu"`;
+exports[`did-web5-ts it should re-create the local id extension example: local-id 1`] = `"did:plc:bxvfvvygwbcnbmknn73t6pbu"`;
 
 exports[`did-web5-ts it should re-create the local id extension example: local-id-migration-tx 1`] = `
 {
