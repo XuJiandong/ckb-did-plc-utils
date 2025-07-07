@@ -21,7 +21,7 @@ use crate::error::Error;
 use crate::pubkey::PublicKey;
 
 // this is the only one valid local id so far
-const LOCAL_ID_PREFIX: &str = "web5:plc:";
+const LOCAL_ID_PREFIX: &str = "did:plc:";
 
 pub fn parse_local_id(id: &[u8]) -> Result<Vec<u8>, Error> {
     let str = core::str::from_utf8(id).map_err(|_| Error::InvalidDidFormat)?;

@@ -43,7 +43,7 @@ export const ALWAYS_SUCCESS_HEX = hexFrom(
 
 function newLocalId(binaryDid: Hex): Hex {
   let did = bytesFrom(binaryDid);
-  let str = "web5:plc:" + uint8arrays.toString(did, "base32");
+  let str = "did:plc:" + uint8arrays.toString(did, "base32");
   return hexFrom(uint8arrays.fromString(str, "utf8"));
 }
 
