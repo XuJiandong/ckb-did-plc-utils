@@ -1,0 +1,13 @@
+{
+  "cell_recipes": [
+    {
+      "name": "did-web5-ts",
+      "tx_hash": "0x9a1f8ac876408b4c735fb083a3da575b1dc8494b8a422e11ba2561d563d7a84a",
+      "index": 0,
+      "occupied_capacity": 20593400000000,
+      "data_hash": "0x5e16206d951cd36ae89873e6bc50c6a66e9beb5cdd8e694110764b9f3bef768f",
+      "type_id": "0x510150477b10d6ab551a509b71265f3164e9fd4137fcb5a4322f49f03092c7c5"
+    }
+  ],
+  "dep_group_recipes": []
+}
