@@ -1,1 +1,1 @@
-69634072c588ac753919eeac3a6e7808618006e1cac6e03afc046dcfd591ca18  build/release/did-web5-ts
+5833e17f9ec08f1ae320c5434b81ed1cd0bf1635a2844e7878a14c09ddb6c6fb  build/release/did-web5-ts
