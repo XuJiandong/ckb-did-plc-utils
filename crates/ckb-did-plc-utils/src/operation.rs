@@ -329,14 +329,19 @@ pub fn validate_2_operations(
     prev_op.validate()?;
     cur_op.validate()?;
     let cid = prev_op.generate_cid()?;
-    if cid != cur_op.get_prev()?.unwrap() {
-        #[cfg(feature = "enable_log")]
-        {
-            log::warn!("invalid prev");
-            log::warn!("cid: {}", cid);
-            log::warn!("prev: {:?}", cur_op.get_prev()?);
+    match cur_op.get_prev()? {
+        Some(prev) => {
+            if prev != cid {
+                #[cfg(feature = "enable_log")]
+                {
+                    log::warn!("invalid prev");
+                    log::warn!("cid: {}", cid);
+                    log::warn!("prev: {}", prev);
+                }
+                return Err(Error::InvalidPrev);
+            }
         }
-        return Err(Error::InvalidPrev);
+        None => return Err(Error::MissingPrevField),
     }
     let rotation_keys = if prev_op.is_legacy() {
         prev_op.get_legacy_rotation_keys()?

@@ -11,6 +11,7 @@ pub enum Error {
     InvalidSignaturePadding,
     VerifySignatureFailed,
     InvalidPrev,
+    MissingPrevField,
     NotGenesisOperation,
     DidMismatched,
     ReaderError,
