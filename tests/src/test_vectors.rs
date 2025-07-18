@@ -18,12 +18,12 @@ use ckb_did_plc_utils::{
     operation::{validate_2_operations, validate_genesis_operation},
 };
 
-fn test_one_vector(prev_file: &str, cur_file: &str, singing_key_index: usize) {
+fn test_one_vector(prev_file: &str, cur_file: &str, rotation_key_indices: usize) {
     let prev_path = get_test_vector_path(prev_file);
     let cur_path = get_test_vector_path(cur_file);
     let prev_buf = read(&prev_path).unwrap_or_else(|_| panic!("Failed to read {}", prev_path));
     let cur_buf = read(&cur_path).unwrap_or_else(|_| panic!("Failed to read {}", cur_path));
-    let result = validate_2_operations(&prev_buf, &cur_buf, singing_key_index);
+    let result = validate_2_operations(&prev_buf, &cur_buf, rotation_key_indices);
     assert!(result.is_ok());
 }
 
