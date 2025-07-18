@@ -80,19 +80,19 @@ export class DidWeb5Data extends mol.Entity.Base<
 // table PlcAuthorization {
 //     history: BytesVec,
 //     sig: Bytes,
-//     signingKeys: Uint8Vec,
+//     rotationKeyIndices: Uint8Vec,
 // }
 export type PlcAuthorizationLike = {
   history: HexLike[];
   sig: HexLike;
-  signingKeys: NumLike[];
+  rotationKeyIndices: NumLike[];
 };
 
 @mol.codec(
   mol.table({
     history: mol.BytesVec,
     sig: mol.Bytes,
-    signingKeys: mol.Uint8Vec,
+    rotationKeyIndices: mol.Uint8Vec,
   }),
 )
 export class PlcAuthorization extends mol.Entity.Base<
@@ -102,7 +102,7 @@ export class PlcAuthorization extends mol.Entity.Base<
   constructor(
     public history: Hex[],
     public sig: Hex,
-    public signingKeys: Num[],
+    public rotationKeyIndices: Num[],
   ) {
     super();
   }
@@ -114,7 +114,7 @@ export class PlcAuthorization extends mol.Entity.Base<
     return new PlcAuthorization(
       data.history.map((h) => hexFrom(h)),
       hexFrom(data.sig),
-      data.signingKeys.map((s) => numFrom(s)),
+      data.rotationKeyIndices.map((s) => numFrom(s)),
     );
   }
 }

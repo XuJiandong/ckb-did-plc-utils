@@ -22,7 +22,7 @@ function getBinaryDid(did: string): Hex {
 
 export type PlcOperationResult = {
   history: Hex[];
-  signingKeys: Num[];
+  rotationKeyIndices: Num[];
   binaryDid: Hex;
   keyPairs: Keypair[];
   sig?: Hex;
@@ -44,7 +44,7 @@ export async function generateOperations(config?: {
   let handle = "at://alice.example.com";
   let atpPds = "https://example.com";
   let binaryDid: Hex = "0x";
-  let signingKeys: Num[] = [];
+  let rotationKeyIndices: Num[] = [];
 
   const lastOp = () => {
     const op = ops.at(-1);
@@ -62,7 +62,7 @@ export async function generateOperations(config?: {
     signer: rotationKey1,
   });
   ops.push(createOp);
-  signingKeys.push(0n);
+  rotationKeyIndices.push(0n);
 
   let did = await didForCreateOp(createOp);
   binaryDid = getBinaryDid(did);
@@ -72,12 +72,12 @@ export async function generateOperations(config?: {
     handle = "at://ali.example2.com";
     const op = await updateHandleOp(lastOp(), rotationKey1, handle);
     ops.push(op);
-    signingKeys.push(0n);
+    rotationKeyIndices.push(0n);
 
     // update with r1 key
     const op2 = await updateHandleOp(lastOp(), rotationKey2, handle);
     ops.push(op2);
-    signingKeys.push(1n);
+    rotationKeyIndices.push(1n);
 
     // update rotation keys
     const newRotationKey = await Secp256k1Keypair.create();
@@ -92,14 +92,14 @@ export async function generateOperations(config?: {
       op3.sig = uint8arrays.toString(wrongSig, "base64url");
     }
     ops.push(op3);
-    signingKeys.push(0n);
+    rotationKeyIndices.push(0n);
   }
   if (config?.mismatchedHistory) {
     ops.pop();
   }
   return {
     history: ops.map((op) => hexFrom(cbor.encode(op))),
-    signingKeys,
+    rotationKeyIndices,
     binaryDid,
     keyPairs: [rotationKey1, rotationKey2],
   };
@@ -107,11 +107,11 @@ export async function generateOperations(config?: {
 
 export async function signDidWeb5(
   result: PlcOperationResult,
-  signingKey: number,
+  rotationKeyIndex: number,
   msg: Hex,
 ): Promise<void> {
-  let keypair = result.keyPairs[signingKey];
+  let keypair = result.keyPairs[rotationKeyIndex];
   let signature = await keypair.sign(bytesFrom(msg));
   result.sig = hexFrom(signature);
-  result.signingKeys.push(numFrom(signingKey));
+  result.rotationKeyIndices.push(numFrom(rotationKeyIndex));
 }
