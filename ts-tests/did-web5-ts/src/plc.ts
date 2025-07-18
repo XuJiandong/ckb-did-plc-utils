@@ -107,11 +107,11 @@ export async function generateOperations(config?: {
 
 export async function signDidWeb5(
   result: PlcOperationResult,
-  signingKeyIndex: number,
+  rotationKeyIndex: number,
   msg: Hex,
 ): Promise<void> {
-  let keypair = result.keyPairs[signingKeyIndex];
+  let keypair = result.keyPairs[rotationKeyIndex];
   let signature = await keypair.sign(bytesFrom(msg));
   result.sig = hexFrom(signature);
-  result.rotationKeyIndices.push(numFrom(signingKeyIndex));
+  result.rotationKeyIndices.push(numFrom(rotationKeyIndex));
 }

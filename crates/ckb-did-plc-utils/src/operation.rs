@@ -206,7 +206,7 @@ impl Operation {
     pub(crate) fn verify_signature(
         &self,
         pubkeys: &[PublicKey],
-        rotation_key_indices: usize,
+        rotation_key_index: usize,
     ) -> Result<(), Error> {
         let unsigned_op = self.new_unsigned_operation()?;
         let sig = self.get_signature()?;
@@ -216,10 +216,10 @@ impl Operation {
             .encode(&mut writer)
             .map_err(|_| Error::InvalidOperation)?;
         let msg = writer.into_inner();
-        if rotation_key_indices >= pubkeys.len() {
+        if rotation_key_index >= pubkeys.len() {
             return Err(Error::InvalidKeyIndex);
         }
-        if pubkeys[rotation_key_indices].verify(&msg, &sig).is_ok() {
+        if pubkeys[rotation_key_index].verify(&msg, &sig).is_ok() {
             Ok(())
         } else {
             #[cfg(feature = "enable_log")]
@@ -227,7 +227,7 @@ impl Operation {
                 log::warn!("verify signature failed");
                 log::warn!("sig: (length = {}), {}", sig.len(), hex::encode(sig));
                 log::warn!("msg: (length = {}), {}", msg.len(), hex::encode(msg));
-                log::warn!("rotation_key_indices = {}", rotation_key_indices);
+                log::warn!("rotation_key_index = {}", rotation_key_index);
                 for pubkey in pubkeys {
                     let pubkey = pubkey.raw();
                     log::warn!(
@@ -322,7 +322,7 @@ impl Operation {
 pub fn validate_2_operations(
     prev_buf: &[u8],
     cur_buf: &[u8],
-    rotation_key_indices: usize,
+    rotation_key_index: usize,
 ) -> Result<(), Error> {
     let prev_op = Operation::from_slice(prev_buf)?;
     let cur_op = Operation::from_slice(cur_buf)?;
@@ -348,14 +348,14 @@ pub fn validate_2_operations(
     } else {
         prev_op.get_rotation_keys()?
     };
-    cur_op.verify_signature(&rotation_keys, rotation_key_indices)?;
+    cur_op.verify_signature(&rotation_keys, rotation_key_index)?;
     Ok(())
 }
 
 pub fn validate_genesis_operation(
     buf: &[u8],
     binary_did: &[u8],
-    rotation_key_indices: usize,
+    rotation_key_index: usize,
 ) -> Result<(), Error> {
     let op = Operation::from_slice(buf)?;
     op.validate()?;
@@ -368,7 +368,7 @@ pub fn validate_genesis_operation(
     } else {
         op.get_rotation_keys()?
     };
-    op.verify_signature(&rotation_keys, rotation_key_indices)?;
+    op.verify_signature(&rotation_keys, rotation_key_index)?;
     let expected_did = op.get_binary_did()?;
     if binary_did != expected_did {
         #[cfg(feature = "enable_log")]
@@ -386,11 +386,11 @@ fn validate_final_operation(
     buf: &[u8],
     final_sig: &[u8],
     msg: &[u8],
-    rotation_key_indices: usize,
+    rotation_key_index: usize,
 ) -> Result<(), Error> {
     let op = Operation::from_slice(buf)?;
     let rotation_keys = op.get_rotation_keys()?;
-    rotation_keys[rotation_key_indices].verify(msg, final_sig)?;
+    rotation_keys[rotation_key_index].verify(msg, final_sig)?;
     Ok(())
 }
 
