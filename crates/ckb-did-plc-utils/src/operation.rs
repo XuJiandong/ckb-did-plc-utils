@@ -8,10 +8,10 @@ use alloc::vec::Vec;
 use alloc::{format, vec};
 
 use base32::Alphabet;
-use cbor4ii::core::Value;
 use cbor4ii::core::dec::Decode;
 use cbor4ii::core::enc::Encode;
 use cbor4ii::core::utils::{BufWriter, SliceReader};
+use cbor4ii::core::{Value, types};
 
 use base64::Engine;
 use molecule::lazy_reader::Cursor;
@@ -214,8 +214,7 @@ impl Operation {
     pub(crate) fn generate_cid(&self) -> Result<String, Error> {
         let mut writer = BufWriter::new(Vec::new());
 
-        // Convert Vec<(Value, Value)> back to Value::Map for encoding
-        let map_value = Value::Map(self.raw.clone());
+        let map_value = types::Map(self.raw.as_slice());
         map_value
             .encode(&mut writer)
             .map_err(|_| Error::InvalidOperation)?;
@@ -268,8 +267,7 @@ impl Operation {
     pub(crate) fn get_binary_did(&self) -> Result<Vec<u8>, Error> {
         let mut writer = BufWriter::new(Vec::new());
 
-        // Convert Vec<(Value, Value)> back to Value::Map for encoding
-        let map_value = Value::Map(self.raw.clone());
+        let map_value = types::Map(self.raw.as_slice());
         map_value
             .encode(&mut writer)
             .map_err(|_| Error::InvalidOperation)?;
