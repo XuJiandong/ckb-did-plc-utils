@@ -5,7 +5,7 @@ vector BytesVec <Bytes>;
 table PlcAuthorization {
     history: BytesVec,
     sig: Bytes,
-    signing_keys: Uint8Vec,
+    rotation_key_indices: Uint8Vec,
 }
 
 table DidWeb5Witness {

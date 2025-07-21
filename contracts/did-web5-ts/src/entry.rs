@@ -30,10 +30,13 @@ fn mint() -> Result<(), Error> {
     // to avoid loading the entire operation history into memory at once.
     let history: Vec<Cursor> = auth.history()?.into_iter().collect();
     let final_sig: Vec<u8> = auth.sig()?.try_into()?;
-    let signing_key_index: Vec<u8> = auth.signing_keys()?.try_into()?;
-    let signing_key_index: Vec<usize> = signing_key_index.into_iter().map(|e| e as usize).collect();
+    let rotation_key_indices: Vec<u8> = auth.rotation_key_indices()?.try_into()?;
+    let rotation_key_indices: Vec<usize> = rotation_key_indices
+        .into_iter()
+        .map(|e| e as usize)
+        .collect();
     let msg = load_tx_hash()?;
-    validate_operation_history(&binary_did, history, signing_key_index, &msg, &final_sig)?;
+    validate_operation_history(&binary_did, history, rotation_key_indices, &msg, &final_sig)?;
     #[cfg(feature = "enable_log")]
     log::info!("validate operation history successfully");
 

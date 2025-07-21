@@ -155,7 +155,7 @@ async function main(
   if (!config?.noAssociatePlc) {
     let txHash = tx.hash();
     if (config.invalidSignature) {
-      result.signingKeys.push(0n);
+      result.rotationKeyIndices.push(0n);
       result.sig = "0x00";
     } else {
       await plc.signDidWeb5(result, 0, txHash);
@@ -167,7 +167,7 @@ async function main(
       localIdAuthorization: {
         history: result.history,
         sig: result.sig,
-        signingKeys: result.signingKeys,
+        rotationKeyIndices: result.rotationKeyIndices,
       },
     });
     let witnessArgs = WitnessArgs.from({
@@ -486,7 +486,7 @@ describe("did-web5-ts", () => {
       localIdAuthorization: {
         history: migration.history,
         sig: migration.sig,
-        signingKeys: migration.signingKeys,
+        rotationKeyIndices: migration.rotationKeyIndices,
       },
     });
     expect(jsonify(web5Witness)).toMatchSnapshot("witness");

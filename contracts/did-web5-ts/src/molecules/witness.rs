@@ -269,7 +269,7 @@ impl PlcAuthorization {
     }
 }
 impl PlcAuthorization {
-    pub fn signing_keys(&self) -> Result<Cursor, Error> {
+    pub fn rotation_key_indices(&self) -> Result<Cursor, Error> {
         let cur = self.cursor.table_slice_by_index(2usize)?;
         cur.convert_to_rawbytes()
     }
