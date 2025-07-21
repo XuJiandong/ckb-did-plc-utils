@@ -8,10 +8,10 @@ use alloc::vec::Vec;
 use alloc::{format, vec};
 
 use base32::Alphabet;
-use cbor4ii::core::Value;
 use cbor4ii::core::dec::Decode;
 use cbor4ii::core::enc::Encode;
 use cbor4ii::core::utils::{BufWriter, SliceReader};
+use cbor4ii::core::{Value, types};
 
 use base64::Engine;
 use molecule::lazy_reader::Cursor;
@@ -34,64 +34,37 @@ pub fn parse_local_id(id: &[u8]) -> Result<Vec<u8>, Error> {
 }
 
 pub(crate) struct Operation {
-    raw: Value,
-    cached_keys: Vec<String>,
+    raw: Vec<(Value, Value)>,
 }
 
 impl Operation {
     pub(crate) fn from_slice(buf: &[u8]) -> Result<Self, Error> {
         let mut reader = SliceReader::new(buf);
-        let raw = Value::decode(&mut reader).map_err(|_| Error::InvalidOperation)?;
-        let mut op = Operation {
-            raw,
-            cached_keys: vec![],
+        let raw_value = Value::decode(&mut reader).map_err(|_| Error::InvalidOperation)?;
+
+        let raw = match raw_value {
+            Value::Map(map) => map,
+            _ => return Err(Error::InvalidOperation),
         };
-        op.update_cached_keys()?;
-        Ok(op)
-    }
-    pub(crate) fn update_cached_keys(&mut self) -> Result<(), Error> {
-        let mut cached_keys = vec![];
-        match &self.raw {
-            Value::Map(map) => {
-                for (key, _) in map {
-                    if let Value::Text(key) = key {
-                        cached_keys.push(key.clone());
-                    } else {
-                        return Err(Error::InvalidOperation);
-                    }
-                }
-            }
-            _ => {
-                return Err(Error::InvalidOperation);
-            }
-        }
-        self.cached_keys = cached_keys;
-        Ok(())
+
+        Ok(Operation { raw })
     }
 
     pub(crate) fn new_unsigned_operation(&self) -> Result<Self, Error> {
-        let raw = self.raw.clone();
-        let mut map = Vec::new();
-        if let Value::Map(original_map) = &raw {
-            for (key, value) in original_map {
-                if let Value::Text(key_str) = key {
-                    // Creates an unsigned operation by removing the "sig" field while preserving
-                    // the original key/value pairs and their order. This unsigned operation will
-                    // be used for signature verification.
-                    if key_str != "sig" {
-                        map.push((key.clone(), value.clone()));
-                    }
+        let mut unsigned_raw = vec![];
+        for (key, value) in &self.raw {
+            if let Value::Text(key_str) = key {
+                // Creates an unsigned operation by removing the "sig" field while preserving
+                // the original key/value pairs and their order. This unsigned operation will
+                // be used for signature verification.
+                if key_str != "sig" {
+                    unsigned_raw.push((key.clone(), value.clone()));
                 }
             }
         }
-        let unsigned_raw = Value::Map(map);
-        let mut op = Operation {
-            raw: unsigned_raw,
-            cached_keys: vec![],
-        };
-        op.update_cached_keys()?;
-        Ok(op)
+        Ok(Operation { raw: unsigned_raw })
     }
+
     pub(crate) fn validate(&self) -> Result<(), Error> {
         if self.is_legacy() {
             if self.has_keys(&[
@@ -125,58 +98,54 @@ impl Operation {
             Err(Error::InvalidOperation)
         }
     }
+
     pub(crate) fn is_operation(&self) -> bool {
-        if let Value::Map(map) = &self.raw {
-            for (k, v) in map {
-                if let (Value::Text(key), Value::Text(value)) = (k, v) {
-                    if key == "type" && value == "plc_operation" {
-                        return true;
-                    }
+        for (k, v) in &self.raw {
+            if let (Value::Text(key), Value::Text(value)) = (k, v) {
+                if key == "type" && value == "plc_operation" {
+                    return true;
                 }
             }
         }
         false
     }
+
     pub(crate) fn is_legacy(&self) -> bool {
-        if let Value::Map(map) = &self.raw {
-            for (k, v) in map {
-                if let (Value::Text(key), Value::Text(value)) = (k, v) {
-                    if key == "type" && value == "create" {
-                        return true;
-                    }
+        for (k, v) in &self.raw {
+            if let (Value::Text(key), Value::Text(value)) = (k, v) {
+                if key == "type" && value == "create" {
+                    return true;
                 }
             }
         }
         false
     }
+
     pub(crate) fn get_rotation_keys(&self) -> Result<Vec<PublicKey>, Error> {
-        if let Value::Map(map) = &self.raw {
-            for (k, v) in map {
-                if let (Value::Text(key), Value::Array(value)) = (k, v) {
-                    if key == "rotationKeys" {
-                        let mut rotation_keys = vec![];
-                        for item in value {
-                            if let Value::Text(key) = item {
-                                let key = PublicKey::from_str(key)?;
-                                rotation_keys.push(key);
-                            }
+        for (k, v) in &self.raw {
+            if let (Value::Text(key), Value::Array(value)) = (k, v) {
+                if key == "rotationKeys" {
+                    let mut rotation_keys = vec![];
+                    for item in value {
+                        if let Value::Text(key) = item {
+                            let key = PublicKey::from_str(key)?;
+                            rotation_keys.push(key);
                         }
-                        return Ok(rotation_keys);
                     }
+                    return Ok(rotation_keys);
                 }
             }
         }
         Err(Error::RotationKeysDecodeError)
     }
+
     // "signingKey" and "recoveryKey" are both used as rotation keys for legacy operation
     pub(crate) fn get_legacy_rotation_keys(&self) -> Result<Vec<PublicKey>, Error> {
         let mut pubkeys = vec![];
-        if let Value::Map(map) = &self.raw {
-            for (k, v) in map {
-                if let (Value::Text(key), Value::Text(value)) = (k, v) {
-                    if key == "signingKey" || key == "recoveryKey" {
-                        pubkeys.push(PublicKey::from_str(value)?);
-                    }
+        for (k, v) in &self.raw {
+            if let (Value::Text(key), Value::Text(value)) = (k, v) {
+                if key == "signingKey" || key == "recoveryKey" {
+                    pubkeys.push(PublicKey::from_str(value)?);
                 }
             }
         }
@@ -184,24 +153,22 @@ impl Operation {
     }
 
     pub(crate) fn get_signature(&self) -> Result<Vec<u8>, Error> {
-        if let Value::Map(map) = &self.raw {
-            for (k, v) in map {
-                if let (Value::Text(key), Value::Text(value)) = (k, v) {
-                    if key == "sig" {
-                        // https://github.com/did-method-plc/did-method-plc/blob/bd5825589a34d1abb377943389ac3838a15cd110/packages/lib/src/operations.ts#L268
-                        if value.ends_with("=") {
-                            return Err(Error::InvalidSignaturePadding);
-                        }
-                        let engine = base64::engine::general_purpose::URL_SAFE_NO_PAD;
-                        let decoded_sig =
-                            engine.decode(value).map_err(|_| Error::InvalidSignature)?;
-                        return Ok(decoded_sig);
+        for (k, v) in &self.raw {
+            if let (Value::Text(key), Value::Text(value)) = (k, v) {
+                if key == "sig" {
+                    // https://github.com/did-method-plc/did-method-plc/blob/bd5825589a34d1abb377943389ac3838a15cd110/packages/lib/src/operations.ts#L268
+                    if value.ends_with("=") {
+                        return Err(Error::InvalidSignaturePadding);
                     }
+                    let engine = base64::engine::general_purpose::URL_SAFE_NO_PAD;
+                    let decoded_sig = engine.decode(value).map_err(|_| Error::InvalidSignature)?;
+                    return Ok(decoded_sig);
                 }
             }
         }
         Err(Error::InvalidOperation)
     }
+
     // note, the `pubkeys`` are from previous operation
     pub(crate) fn verify_signature(
         &self,
@@ -211,11 +178,14 @@ impl Operation {
         let unsigned_op = self.new_unsigned_operation()?;
         let sig = self.get_signature()?;
         let mut writer = BufWriter::new(Vec::new());
-        unsigned_op
-            .raw
+
+        // Convert Vec<(Value, Value)> back to Value::Map for encoding
+        let map_value = Value::Map(unsigned_op.raw);
+        map_value
             .encode(&mut writer)
             .map_err(|_| Error::InvalidOperation)?;
         let msg = writer.into_inner();
+
         if rotation_key_index >= pubkeys.len() {
             return Err(Error::InvalidKeyIndex);
         }
@@ -240,9 +210,12 @@ impl Operation {
             Err(Error::VerifySignatureFailed)
         }
     }
+
     pub(crate) fn generate_cid(&self) -> Result<String, Error> {
         let mut writer = BufWriter::new(Vec::new());
-        self.raw
+
+        let map_value = types::Map(self.raw.as_slice());
+        map_value
             .encode(&mut writer)
             .map_err(|_| Error::InvalidOperation)?;
         let dag = writer.into_inner();
@@ -265,23 +238,22 @@ impl Operation {
 
     // The `prev` field can be null for genesis operation
     pub(crate) fn get_prev(&self) -> Result<Option<String>, Error> {
-        if let Value::Map(map) = &self.raw {
-            for (k, v) in map {
-                if let Value::Text(key) = k {
-                    if key == "prev" {
-                        if let Value::Text(value) = v {
-                            return Ok(Some(value.clone()));
-                        } else if let Value::Null = v {
-                            return Ok(None);
-                        } else {
-                            return Err(Error::InvalidOperation);
-                        }
+        for (k, v) in &self.raw {
+            if let Value::Text(key) = k {
+                if key == "prev" {
+                    if let Value::Text(value) = v {
+                        return Ok(Some(value.clone()));
+                    } else if let Value::Null = v {
+                        return Ok(None);
+                    } else {
+                        return Err(Error::InvalidOperation);
                     }
                 }
             }
         }
         Err(Error::InvalidOperation)
     }
+
     #[allow(unused)]
     pub(crate) fn get_did(&self) -> Result<String, Error> {
         let binary_did = self.get_binary_did()?;
@@ -291,9 +263,12 @@ impl Operation {
         );
         Ok(format!("did:plc:{}", b32))
     }
+
     pub(crate) fn get_binary_did(&self) -> Result<Vec<u8>, Error> {
         let mut writer = BufWriter::new(Vec::new());
-        self.raw
+
+        let map_value = types::Map(self.raw.as_slice());
+        map_value
             .encode(&mut writer)
             .map_err(|_| Error::InvalidOperation)?;
         let dag = writer.into_inner();
@@ -304,8 +279,15 @@ impl Operation {
     }
 
     fn has_keys(&self, keys: &[&str]) -> bool {
-        keys.iter()
-            .all(|&key| self.cached_keys.iter().any(|k| k == key))
+        keys.iter().all(|&key| {
+            self.raw.iter().any(|(k, _)| {
+                if let Value::Text(k_str) = k {
+                    k_str == key
+                } else {
+                    false
+                }
+            })
+        })
     }
 }
 
