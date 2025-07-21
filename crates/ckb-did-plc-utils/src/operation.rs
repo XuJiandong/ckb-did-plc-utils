@@ -35,7 +35,6 @@ pub fn parse_local_id(id: &[u8]) -> Result<Vec<u8>, Error> {
 
 pub(crate) struct Operation {
     raw: Vec<(Value, Value)>,
-    cached_keys: Vec<String>,
 }
 
 impl Operation {
@@ -48,25 +47,7 @@ impl Operation {
             _ => return Err(Error::InvalidOperation),
         };
 
-        let mut op = Operation {
-            raw,
-            cached_keys: vec![],
-        };
-        op.update_cached_keys()?;
-        Ok(op)
-    }
-
-    pub(crate) fn update_cached_keys(&mut self) -> Result<(), Error> {
-        let mut cached_keys = vec![];
-        for (key, _) in &self.raw {
-            if let Value::Text(key) = key {
-                cached_keys.push(key.clone());
-            } else {
-                return Err(Error::InvalidOperation);
-            }
-        }
-        self.cached_keys = cached_keys;
-        Ok(())
+        Ok(Operation { raw })
     }
 
     pub(crate) fn new_unsigned_operation(&self) -> Result<Self, Error> {
@@ -81,12 +62,7 @@ impl Operation {
                 }
             }
         }
-        let mut op = Operation {
-            raw: unsigned_raw,
-            cached_keys: vec![],
-        };
-        op.update_cached_keys()?;
-        Ok(op)
+        Ok(Operation { raw: unsigned_raw })
     }
 
     pub(crate) fn validate(&self) -> Result<(), Error> {
@@ -305,8 +281,15 @@ impl Operation {
     }
 
     fn has_keys(&self, keys: &[&str]) -> bool {
-        keys.iter()
-            .all(|&key| self.cached_keys.iter().any(|k| k == key))
+        keys.iter().all(|&key| {
+            self.raw.iter().any(|(k, _)| {
+                if let Value::Text(k_str) = k {
+                    k_str == key
+                } else {
+                    false
+                }
+            })
+        })
     }
 }
 
