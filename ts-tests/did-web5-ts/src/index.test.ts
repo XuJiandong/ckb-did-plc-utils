@@ -70,6 +70,7 @@ async function main(
     shortArgs?: boolean;
     invalidCbor?: boolean;
     mismatchedHistory?: boolean;
+    moleculeCompatible?: boolean;
   },
   shouldFail?: boolean,
 ): Promise<number> {
@@ -170,6 +171,16 @@ async function main(
         rotationKeyIndices: result.rotationKeyIndices,
       },
     });
+    if (config?.moleculeCompatible) {
+      web5Witness = molecule.TestWitness.from({
+        localIdAuthorization: {
+          history: result.history,
+          sig: result.sig,
+          rotationKeyIndices: result.rotationKeyIndices,
+        },
+        padding: 100
+      });
+    }
     let witnessArgs = WitnessArgs.from({
       outputType: web5Witness.toBytes(),
     });
@@ -208,6 +219,12 @@ describe("did-web5-ts", () => {
   test("it should process a genesis operation with associated did:plc correctly", async () => {
     let result = await plc.generateOperations();
     await main(result, {});
+  });
+  // TODO: it should fail, but currently it passed.
+  // It requires https://github.com/nervosnetwork/molecule/pull/102
+  test("it should reject a genesis operation with wrong molecule format", async () => {
+    let result = await plc.generateOperations();
+    await main(result, {moleculeCompatible: true});
   });
   test("it should reject invalid cbor format", async () => {
     let result = await plc.generateOperations();

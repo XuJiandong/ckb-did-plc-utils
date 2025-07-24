@@ -147,3 +147,31 @@ export class DidWeb5Witness extends mol.Entity.Base<
     return new DidWeb5Witness(PlcAuthorization.from(data.localIdAuthorization));
   }
 }
+
+// a test molecule definition to test `compatible` flag
+export type TestWitnessLike = {
+  localIdAuthorization: PlcAuthorizationLike;
+  padding: number
+};
+
+@mol.codec(
+  mol.table({
+    localIdAuthorization: PlcAuthorization,
+    padding: mol.Uint32,
+  }),
+)
+export class TestWitness extends mol.Entity.Base<
+  TestWitnessLike,
+  TestWitness
+>() {
+  constructor(public localIdAuthorization: PlcAuthorization, public padding: number) {
+    super();
+  }
+
+  static from(data: TestWitnessLike): TestWitness {
+    if (data instanceof TestWitness) {
+      return data;
+    }
+    return new TestWitness(PlcAuthorization.from(data.localIdAuthorization), 0);
+  }
+}
