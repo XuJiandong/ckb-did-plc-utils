@@ -151,7 +151,7 @@ export class DidWeb5Witness extends mol.Entity.Base<
 // a test molecule definition to test `compatible` flag
 export type TestWitnessLike = {
   localIdAuthorization: PlcAuthorizationLike;
-  padding: number
+  padding: number;
 };
 
 @mol.codec(
@@ -164,7 +164,10 @@ export class TestWitness extends mol.Entity.Base<
   TestWitnessLike,
   TestWitness
 >() {
-  constructor(public localIdAuthorization: PlcAuthorization, public padding: number) {
+  constructor(
+    public localIdAuthorization: PlcAuthorization,
+    public padding: number,
+  ) {
     super();
   }
 
