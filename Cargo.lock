@@ -96,7 +96,7 @@ dependencies = [
  "hex",
  "k256",
  "log",
- "molecule 0.9.0",
+ "molecule 0.9.1",
  "multibase",
  "p256",
  "sha2",
@@ -225,7 +225,7 @@ dependencies = [
  "ckb-std",
  "hex",
  "log",
- "molecule 0.9.0",
+ "molecule 0.9.1",
  "molecule-codegen",
 ]
 
@@ -397,9 +397,9 @@ dependencies = [
 
 [[package]]
 name = "molecule"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2257975b60ee320cfdb812c7d4838814807758a895aa8a8489077553a661a6f4"
+checksum = "ff7f852ae1f25e83d8cf5628fa30740a287ac866857e4fde8b8fa450b7b1428b"
 dependencies = [
  "bytes",
  "cfg-if",
@@ -407,12 +407,12 @@ dependencies = [
 
 [[package]]
 name = "molecule-codegen"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46e24339948ef1688f23aec7822479aa3f81c2fd0912137d8c2f038a563fc87c"
+checksum = "2db1ed61dd8af58290bab5ba65055490b7326223efad6cc99e685d296d6115af"
 dependencies = [
  "case",
- "molecule 0.9.0",
+ "molecule 0.9.1",
  "pest",
  "pest_derive",
  "proc-macro2",
