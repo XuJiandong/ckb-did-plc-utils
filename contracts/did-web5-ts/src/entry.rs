@@ -1,12 +1,13 @@
 use crate::error::Error;
 use crate::molecules::{new_data, new_witness, PlcAuthorization};
-use crate::type_id::{check_type_id, is_cell_present};
 use alloc::vec::Vec;
 use ckb_did_plc_utils::{
     operation::{parse_local_id, validate_operation_history},
     reader::validate_cbor_format,
 };
-use ckb_std::{ckb_constants::Source, high_level::load_tx_hash};
+use ckb_std::error::SysError;
+use ckb_std::syscalls::load_cell;
+use ckb_std::{ckb_constants::Source, high_level::load_tx_hash, type_id::check_type_id};
 use molecule::lazy_reader::Cursor;
 
 fn mint() -> Result<(), Error> {
@@ -70,6 +71,14 @@ fn update() -> Result<(), Error> {
 
 fn burn() -> Result<(), Error> {
     Ok(())
+}
+
+fn is_cell_present(index: usize, source: Source) -> bool {
+    let buf = &mut [];
+    matches!(
+        load_cell(buf, 0, index, source),
+        Ok(_) | Err(SysError::LengthNotEnough(_))
+    )
 }
 
 pub fn entry() -> Result<(), Error> {
