@@ -111,9 +111,9 @@ dependencies = [
 
 [[package]]
 name = "ckb-gen-types"
-version = "0.200.0"
+version = "0.202.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc8b9b56ee90afca6710a512abac5c4d7dba69b39b63ed9c246ec17aee764bf8"
+checksum = "255da9cda52578622b7b8a437eb22942bfdbe90d7896f86a002fa8e4cc1804c8"
 dependencies = [
  "cfg-if",
  "molecule 0.8.0",
@@ -129,16 +129,26 @@ dependencies = [
 ]
 
 [[package]]
-name = "ckb-std"
-version = "0.17.2"
+name = "ckb-hash"
+version = "0.202.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d399a77aef9814044db51bfd61a4aaa42ee468bfb9a13e83ba656bd95f7793ca"
+checksum = "0a74fb43c0f092a5ea388d31e4579cada2cc14e45dd5818b996f348613efe202"
+dependencies = [
+ "blake2b-ref",
+]
+
+[[package]]
+name = "ckb-std"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "161ac10a3d0c70ff689a0cf739cf5d91329eb4da085001e887aa636a2e729d84"
 dependencies = [
  "buddy-alloc",
  "cc",
  "ckb-gen-types",
- "ckb-hash",
+ "ckb-hash 0.202.0",
  "gcd",
+ "int-enum",
  "log",
 ]
 
@@ -221,7 +231,7 @@ version = "0.1.0"
 dependencies = [
  "base32",
  "ckb-did-plc-utils",
- "ckb-hash",
+ "ckb-hash 0.200.0",
  "ckb-std",
  "hex",
  "log",
@@ -347,6 +357,18 @@ checksum = "cea70ddb795996207ad57735b50c5982d8844f38ba9ee5f1aedcfb708a2aa11e"
 dependencies = [
  "equivalent",
  "hashbrown",
+]
+
+[[package]]
+name = "int-enum"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e366a1634cccc76b4cfd3e7580de9b605e4d93f1edac48d786c1f867c0def495"
+dependencies = [
+ "proc-macro2",
+ "proc-macro2-diagnostics",
+ "quote",
+ "syn 2.0.101",
 ]
 
 [[package]]
@@ -525,6 +547,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "02b3e5e68a3a1a02aad3ec490a98007cbc13c37cbe84a3cd7b8e406d76e7f778"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "proc-macro2-diagnostics"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af066a9c399a26e020ada66a034357a868728e72cd426f3adcd35f80d88d88c8"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.101",
+ "version_check",
 ]
 
 [[package]]
