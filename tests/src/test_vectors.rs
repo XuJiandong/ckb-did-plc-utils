@@ -256,3 +256,14 @@ fn test_vector_1_2_wrong_operation_content() {
     let result = validate_2_operations(&prev_buf, &cur_buf, 0);
     assert!(matches!(result, Err(Error::VerifySignatureFailed)));
 }
+
+
+#[test]
+fn test_not_genesis_operation() {
+    //只有真正的创世操作（prev 为 null）才能通过验证
+    let non_genesis_path = get_test_vector_path("2-update-handle.cbor");  // 这是一个带有 prev 的更新操作
+    let buf = read(&non_genesis_path).expect("Failed to read file");
+    let binary_did = vec![0u8; 15];  // 任意 DID，实际应匹配
+    let result = validate_genesis_operation(&buf, &binary_did, 0);
+    assert!(matches!(result, Err(Error::NotGenesisOperation)));
+}
