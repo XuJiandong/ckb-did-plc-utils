@@ -7,3 +7,4 @@ edition = "2024"
 
 [dependencies]
 ckb-did-plc-utils = { path = "../crates/ckb-did-plc-utils" }
+molecule = { version = "0.9.1", default-features = false }

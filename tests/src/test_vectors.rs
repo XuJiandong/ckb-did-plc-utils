@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
-use std::{fs::read, vec::Vec};
-
+use std::{fs::read, vec::Vec, boxed::Box};
+use molecule::lazy_reader::{Cursor, Error as MoleculeError, Read};
 use ckb_did_plc_utils::{
     base32::{self, Alphabet},
     base64::{
@@ -266,4 +266,48 @@ fn test_not_genesis_operation() {
     let binary_did = vec![0u8; 15];  // 任意 DID，实际应匹配
     let result = validate_genesis_operation(&buf, &binary_did, 0);
     assert!(matches!(result, Err(Error::NotGenesisOperation)));
+}
+
+// 自定义阅读器模拟（基于 molecules.rs 中的 DataReader）
+struct MockReader {
+    total_size: usize,
+    data: Vec<u8>,
+}
+
+impl Read for MockReader {
+    fn read(&self, buf: &mut [u8], offset: usize) -> Result<usize, MoleculeError> {
+        if offset >= self.total_size {
+            return Err(MoleculeError::OutOfBound(offset, self.total_size));
+        }
+        let len = std::cmp::min(buf.len(), self.total_size - offset);
+        buf[..len].copy_from_slice(&self.data[offset..offset + len]);
+        Ok(len)
+    }
+}
+
+#[test]
+fn test_molecule_error_invalid_offset() {
+    // 步骤1: 创建无效输入（小缓冲区，但偏移超出）
+    let invalid_data = vec![0u8; 10];  // 有效数据只有10字节
+    // 步骤2: 尝试通过底层 reader 读取无效偏移来触发错误
+    let reader = MockReader { total_size: 10, data: vec![0u8; 10] };
+    let mut buf = [0u8; 5];
+    let result = reader.read(&mut buf, 15);
+    assert!(matches!(result, Err(MoleculeError::OutOfBound(_, _))));
+    let wrapped_error = Error::from(result.unwrap_err());
+    println!("{:?}", wrapped_error);
+    assert!(matches!(wrapped_error, Error::MoleculeError(MoleculeError::OutOfBound(_, _))));
+}
+
+#[test]
+fn test_reader_error_empty_buffer() {
+    // 空缓冲区
+    let reader = MockReader { total_size: 0, data: vec![] };
+    let cursor = Cursor::new(0, Box::new(reader));
+
+    let reader = MockReader { total_size: 0, data: vec![] };
+    let mut buf = [0u8; 1];
+    let result = reader.read(&mut buf, 0);
+
+    assert!(matches!(result, Err(MoleculeError::OutOfBound(_, _))));
 }
