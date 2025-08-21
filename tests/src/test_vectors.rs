@@ -16,7 +16,7 @@ use ckb_did_plc_utils::{
     },
     error::Error,
     reader::validate_cbor_format,
-    operation::{validate_2_operations, validate_genesis_operation, validate_operation_history},
+    operation::{validate_2_operations, validate_genesis_operation, validate_operation_history, parse_local_id},
 };
 
 fn test_one_vector(prev_file: &str, cur_file: &str, rotation_key_index: usize) {
@@ -337,5 +337,18 @@ fn test_utils_error_invalid_cbor() {
     let result = validate_cbor_format(cursor);
 
     assert!(matches!(result, Err(Error::InvalidCbor)));
+}
+
+#[test]
+fn test_utils_error_invalid_did_format() {
+    // 测试无效的前缀
+    let invalid_did = b"did:invalid:abc123";
+    let result = parse_local_id(invalid_did);
+    assert!(matches!(result, Err(Error::InvalidDidFormat)));
+
+    // 测试无效的 base32 编码
+    let invalid_base32 = b"did:plc:invalid_base32";
+    let result2 = parse_local_id(invalid_base32);
+    assert!(matches!(result2, Err(Error::InvalidDidFormat)));
 }
 
