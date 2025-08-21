@@ -15,6 +15,7 @@ use ckb_did_plc_utils::{
         utils::{BufWriter, SliceReader},
     },
     error::Error,
+    reader::validate_cbor_format,
     operation::{validate_2_operations, validate_genesis_operation, validate_operation_history},
 };
 
@@ -324,5 +325,17 @@ fn test_utils_error_invalid_history() {
     let rotation_key_indices = vec![0];  // 长度应为 history.len() + 1 = 2
     let result2 = validate_operation_history(&binary_did, history, rotation_key_indices, &msg, &final_sig);
     assert!(matches!(result2, Err(Error::InvalidHistory)));
+}
+
+#[test]
+fn test_utils_error_invalid_cbor() {
+    // 创建一个无效的 CBOR 数据 Cursor
+    let invalid_cbor_data: Vec<u8> = vec![0x82]; // 无效 CBOR: 期望2个元素的数组但无内容
+    let total_size = invalid_cbor_data.len();
+    let cursor = Cursor::new(total_size, Box::new(MockReader { total_size, data: invalid_cbor_data }));
+
+    let result = validate_cbor_format(cursor);
+
+    assert!(matches!(result, Err(Error::InvalidCbor)));
 }
 
