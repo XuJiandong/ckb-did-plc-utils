@@ -287,9 +287,6 @@ impl Read for MockReader {
 
 #[test]
 fn test_molecule_error_invalid_offset() {
-    // 步骤1: 创建无效输入（小缓冲区，但偏移超出）
-    let invalid_data = vec![0u8; 10];  // 有效数据只有10字节
-    // 步骤2: 尝试通过底层 reader 读取无效偏移来触发错误
     let reader = MockReader { total_size: 10, data: vec![0u8; 10] };
     let mut buf = [0u8; 5];
     let result = reader.read(&mut buf, 15);
@@ -303,8 +300,6 @@ fn test_molecule_error_invalid_offset() {
 fn test_reader_error_empty_buffer() {
     // 空缓冲区
     let reader = MockReader { total_size: 0, data: vec![] };
-    let cursor = Cursor::new(0, Box::new(reader));
-
     let reader = MockReader { total_size: 0, data: vec![] };
     let mut buf = [0u8; 1];
     let result = reader.read(&mut buf, 0);
