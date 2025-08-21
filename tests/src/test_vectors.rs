@@ -268,7 +268,7 @@ fn test_not_genesis_operation() {
     assert!(matches!(result, Err(Error::NotGenesisOperation)));
 }
 
-// 自定义阅读器模拟（基于 molecules.rs 中的 DataReader）
+
 struct MockReader {
     total_size: usize,
     data: Vec<u8>,
@@ -297,12 +297,10 @@ fn test_molecule_error_invalid_offset() {
 }
 
 #[test]
-fn test_reader_error_empty_buffer() {
+fn test_molecule_error_empty_buffer() {
     // 空缓冲区
-    let reader = MockReader { total_size: 0, data: vec![] };
     let reader = MockReader { total_size: 0, data: vec![] };
     let mut buf = [0u8; 1];
     let result = reader.read(&mut buf, 0);
-
     assert!(matches!(result, Err(MoleculeError::OutOfBound(_, _))));
 }
