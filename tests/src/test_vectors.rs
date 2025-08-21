@@ -352,3 +352,34 @@ fn test_utils_error_invalid_did_format() {
     assert!(matches!(result2, Err(Error::InvalidDidFormat)));
 }
 
+#[test]
+fn test_utils_error_tombstone_in_history() {
+    let did = load_did("creation");
+    let binary_did = parse_did(&did);
+
+    let files = vec![
+        "1-did-creation.cbor",
+        "2-update-handle.cbor",
+        "3-update-pds.cbor",
+        "4-update-atproto-key.cbor",
+        "5-update-rotation-keys.cbor",
+        "6-update-handle.cbor",
+        "7-tombstone.cbor",
+    ];
+
+    let mut history: Vec<Cursor> = vec![];
+    for file in files {
+        let path = get_test_vector_path(file);
+        let buf = read(&path).unwrap_or_else(|_| panic!("Failed to read {}", path));
+        let total_size = buf.len();
+        history.push(Cursor::new(total_size, Box::new(MockReader { total_size, data: buf })));
+    }
+    let rotation_key_indices: Vec<usize> = vec![0, 0, 0, 0, 0, 1, 0, 0];
+    let msg = vec![0u8; 32];
+    let final_sig = vec![0u8; 65];
+
+    let result = validate_operation_history(&binary_did, history, rotation_key_indices, &msg, &final_sig);
+
+    assert!(result.is_err());
+}
+
