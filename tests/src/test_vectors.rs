@@ -15,7 +15,7 @@ use ckb_did_plc_utils::{
         utils::{BufWriter, SliceReader},
     },
     error::Error,
-    operation::{validate_2_operations, validate_genesis_operation},
+    operation::{validate_2_operations, validate_genesis_operation, validate_operation_history},
 };
 
 fn test_one_vector(prev_file: &str, cur_file: &str, rotation_key_index: usize) {
@@ -304,3 +304,25 @@ fn test_molecule_error_empty_buffer() {
     let result = reader.read(&mut buf, 0);
     assert!(matches!(result, Err(MoleculeError::OutOfBound(_, _))));
 }
+
+#[test]
+fn test_utils_error_invalid_history() {
+    // 步骤1: 创建空历史，触发 InvalidHistory
+    let binary_did = vec![0u8; 15];
+    let history: Vec<Cursor> = vec![];
+    let rotation_key_indices: Vec<usize> = vec![];
+    let msg = vec![];
+    let final_sig = vec![];
+
+    let result = validate_operation_history(&binary_did, history, rotation_key_indices, &msg, &final_sig);
+
+    // 步骤2: 验证返回 UtilsError::InvalidHistory
+    assert!(matches!(result, Err(Error::InvalidHistory)));
+
+    // 额外测试: 历史长度与索引不匹配
+    let history = vec![Cursor::new(0, Box::new(MockReader { total_size: 0, data: vec![] }))];
+    let rotation_key_indices = vec![0];  // 长度应为 history.len() + 1 = 2
+    let result2 = validate_operation_history(&binary_did, history, rotation_key_indices, &msg, &final_sig);
+    assert!(matches!(result2, Err(Error::InvalidHistory)));
+}
+
