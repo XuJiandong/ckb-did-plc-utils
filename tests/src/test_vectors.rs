@@ -1,7 +1,5 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
-use std::{fs::read, vec::Vec};
-
 use ckb_did_plc_utils::{
     base32::{self, Alphabet},
     base64::{
@@ -15,8 +13,14 @@ use ckb_did_plc_utils::{
         utils::{BufWriter, SliceReader},
     },
     error::Error,
-    operation::{validate_2_operations, validate_genesis_operation},
+    operation::{
+        parse_local_id, validate_2_operations, validate_genesis_operation,
+        validate_operation_history,
+    },
+    reader::validate_cbor_format,
 };
+use molecule::lazy_reader::{Cursor, Error as MoleculeError, Read};
+use std::{boxed::Box, fs::read, vec::Vec};
 
 fn test_one_vector(prev_file: &str, cur_file: &str, rotation_key_index: usize) {
     let prev_path = get_test_vector_path(prev_file);
@@ -82,7 +86,6 @@ fn test_vectors_6_7() {
     let result = validate_2_operations(&prev_buf, &cur_buf, 0);
     assert!(result.is_err());
 }
-
 #[test]
 fn test_vector_legacy_1_2() {
     test_one_vector(
@@ -215,7 +218,6 @@ fn test_vectors_1_2_wrong_sig() {
     let result = validate_2_operations(&prev_buf, &cur_buf, 0);
     assert!(result.is_err());
 }
-
 #[test]
 fn test_vectors_1_2_wrong_cid() {
     let prev_path = get_test_vector_path("1-did-creation.cbor");
@@ -255,4 +257,155 @@ fn test_vector_1_2_wrong_operation_content() {
 
     let result = validate_2_operations(&prev_buf, &cur_buf, 0);
     assert!(matches!(result, Err(Error::VerifySignatureFailed)));
+}
+#[test]
+fn test_not_genesis_operation() {
+    // Only true genesis operations (with prev as null) can pass validation
+    let non_genesis_path = get_test_vector_path("2-update-handle.cbor"); // This is an update operation with prev
+    let buf = read(&non_genesis_path).expect("Failed to read file");
+    let binary_did = vec![0u8; 15]; // Arbitrary DID, should match in practice
+    let result = validate_genesis_operation(&buf, &binary_did, 0);
+    assert!(matches!(result, Err(Error::NotGenesisOperation)));
+}
+struct MockReader {
+    total_size: usize,
+    data: Vec<u8>,
+}
+
+impl Read for MockReader {
+    fn read(&self, buf: &mut [u8], offset: usize) -> Result<usize, MoleculeError> {
+        if offset >= self.total_size {
+            return Err(MoleculeError::OutOfBound(offset, self.total_size));
+        }
+        let len = std::cmp::min(buf.len(), self.total_size - offset);
+        buf[..len].copy_from_slice(&self.data[offset..offset + len]);
+        Ok(len)
+    }
+}
+
+#[test]
+fn test_molecule_error_invalid_offset() {
+    let reader = MockReader {
+        total_size: 10,
+        data: vec![0u8; 10],
+    };
+    let mut buf = [0u8; 5];
+    let result = reader.read(&mut buf, 15);
+    assert!(matches!(result, Err(MoleculeError::OutOfBound(_, _))));
+    let wrapped_error = Error::from(result.unwrap_err());
+    println!("{:?}", wrapped_error);
+    assert!(matches!(
+        wrapped_error,
+        Error::MoleculeError(MoleculeError::OutOfBound(_, _))
+    ));
+}
+
+#[test]
+fn test_molecule_error_empty_buffer() {
+    // Empty buffer
+    let reader = MockReader {
+        total_size: 0,
+        data: vec![],
+    };
+    let mut buf = [0u8; 1];
+    let result = reader.read(&mut buf, 0);
+    assert!(matches!(result, Err(MoleculeError::OutOfBound(_, _))));
+}
+
+#[test]
+fn test_utils_error_invalid_history() {
+    // Step 1: Create empty history to trigger InvalidHistory
+    let binary_did = vec![0u8; 15];
+    let history: Vec<Cursor> = vec![];
+    let rotation_key_indices: Vec<usize> = vec![];
+    let msg = vec![];
+    let final_sig = vec![];
+
+    let result =
+        validate_operation_history(&binary_did, history, rotation_key_indices, &msg, &final_sig);
+
+    // Step 2: Verify returns UtilsError::InvalidHistory
+    assert!(matches!(result, Err(Error::InvalidHistory)));
+
+    // Additional test: History length does not match indices
+    let history = vec![Cursor::new(
+        0,
+        Box::new(MockReader {
+            total_size: 0,
+            data: vec![],
+        }),
+    )];
+    let rotation_key_indices = vec![0]; // Length should be history.len() + 1 = 2
+    let result2 =
+        validate_operation_history(&binary_did, history, rotation_key_indices, &msg, &final_sig);
+    assert!(matches!(result2, Err(Error::InvalidHistory)));
+}
+
+#[test]
+fn test_utils_error_invalid_cbor() {
+    // Create an invalid CBOR data Cursor
+    let invalid_cbor_data: Vec<u8> = vec![0x82]; // Invalid CBOR: Expects an array of 2 elements but has no content
+    let total_size = invalid_cbor_data.len();
+    let cursor = Cursor::new(
+        total_size,
+        Box::new(MockReader {
+            total_size,
+            data: invalid_cbor_data,
+        }),
+    );
+
+    let result = validate_cbor_format(cursor);
+
+    assert!(matches!(result, Err(Error::InvalidCbor)));
+}
+
+#[test]
+fn test_utils_error_invalid_did_format() {
+    // Test invalid prefix
+    let invalid_did = b"did:invalid:abc123";
+    let result = parse_local_id(invalid_did);
+    assert!(matches!(result, Err(Error::InvalidDidFormat)));
+
+    // Test invalid base32 encoding
+    let invalid_base32 = b"did:plc:invalid_base32";
+    let result2 = parse_local_id(invalid_base32);
+    assert!(matches!(result2, Err(Error::InvalidDidFormat)));
+}
+
+#[test]
+fn test_utils_error_tombstone_in_history() {
+    let did = load_did("creation");
+    let binary_did = parse_did(&did);
+
+    let files = vec![
+        "1-did-creation.cbor",
+        "2-update-handle.cbor",
+        "3-update-pds.cbor",
+        "4-update-atproto-key.cbor",
+        "5-update-rotation-keys.cbor",
+        "6-update-handle.cbor",
+        "7-tombstone.cbor",
+    ];
+
+    let mut history: Vec<Cursor> = vec![];
+    for file in files {
+        let path = get_test_vector_path(file);
+        let buf = read(&path).unwrap_or_else(|_| panic!("Failed to read {}", path));
+        let total_size = buf.len();
+        history.push(Cursor::new(
+            total_size,
+            Box::new(MockReader {
+                total_size,
+                data: buf,
+            }),
+        ));
+    }
+    let rotation_key_indices: Vec<usize> = vec![0, 0, 0, 0, 0, 1, 0, 0];
+    let msg = vec![0u8; 32];
+    let final_sig = vec![0u8; 65];
+
+    let result =
+        validate_operation_history(&binary_did, history, rotation_key_indices, &msg, &final_sig);
+
+    assert!(result.is_err());
 }
