@@ -260,10 +260,10 @@ fn test_vector_1_2_wrong_operation_content() {
 }
 #[test]
 fn test_not_genesis_operation() {
-    //只有真正的创世操作（prev 为 null）才能通过验证
-    let non_genesis_path = get_test_vector_path("2-update-handle.cbor"); // 这是一个带有 prev 的更新操作
+    // Only true genesis operations (with prev as null) can pass validation
+    let non_genesis_path = get_test_vector_path("2-update-handle.cbor"); // This is an update operation with prev
     let buf = read(&non_genesis_path).expect("Failed to read file");
-    let binary_did = vec![0u8; 15]; // 任意 DID，实际应匹配
+    let binary_did = vec![0u8; 15]; // Arbitrary DID, should match in practice
     let result = validate_genesis_operation(&buf, &binary_did, 0);
     assert!(matches!(result, Err(Error::NotGenesisOperation)));
 }
@@ -302,7 +302,7 @@ fn test_molecule_error_invalid_offset() {
 
 #[test]
 fn test_molecule_error_empty_buffer() {
-    // 空缓冲区
+    // Empty buffer
     let reader = MockReader {
         total_size: 0,
         data: vec![],
@@ -314,7 +314,7 @@ fn test_molecule_error_empty_buffer() {
 
 #[test]
 fn test_utils_error_invalid_history() {
-    // 步骤1: 创建空历史，触发 InvalidHistory
+    // Step 1: Create empty history to trigger InvalidHistory
     let binary_did = vec![0u8; 15];
     let history: Vec<Cursor> = vec![];
     let rotation_key_indices: Vec<usize> = vec![];
@@ -324,10 +324,10 @@ fn test_utils_error_invalid_history() {
     let result =
         validate_operation_history(&binary_did, history, rotation_key_indices, &msg, &final_sig);
 
-    // 步骤2: 验证返回 UtilsError::InvalidHistory
+    // Step 2: Verify returns UtilsError::InvalidHistory
     assert!(matches!(result, Err(Error::InvalidHistory)));
 
-    // 额外测试: 历史长度与索引不匹配
+    // Additional test: History length does not match indices
     let history = vec![Cursor::new(
         0,
         Box::new(MockReader {
@@ -335,7 +335,7 @@ fn test_utils_error_invalid_history() {
             data: vec![],
         }),
     )];
-    let rotation_key_indices = vec![0]; // 长度应为 history.len() + 1 = 2
+    let rotation_key_indices = vec![0]; // Length should be history.len() + 1 = 2
     let result2 =
         validate_operation_history(&binary_did, history, rotation_key_indices, &msg, &final_sig);
     assert!(matches!(result2, Err(Error::InvalidHistory)));
@@ -343,8 +343,8 @@ fn test_utils_error_invalid_history() {
 
 #[test]
 fn test_utils_error_invalid_cbor() {
-    // 创建一个无效的 CBOR 数据 Cursor
-    let invalid_cbor_data: Vec<u8> = vec![0x82]; // 无效 CBOR: 期望2个元素的数组但无内容
+    // Create an invalid CBOR data Cursor
+    let invalid_cbor_data: Vec<u8> = vec![0x82]; // Invalid CBOR: Expects an array of 2 elements but has no content
     let total_size = invalid_cbor_data.len();
     let cursor = Cursor::new(
         total_size,
@@ -361,12 +361,12 @@ fn test_utils_error_invalid_cbor() {
 
 #[test]
 fn test_utils_error_invalid_did_format() {
-    // 测试无效的前缀
+    // Test invalid prefix
     let invalid_did = b"did:invalid:abc123";
     let result = parse_local_id(invalid_did);
     assert!(matches!(result, Err(Error::InvalidDidFormat)));
 
-    // 测试无效的 base32 编码
+    // Test invalid base32 encoding
     let invalid_base32 = b"did:plc:invalid_base32";
     let result2 = parse_local_id(invalid_base32);
     assert!(matches!(result2, Err(Error::InvalidDidFormat)));
