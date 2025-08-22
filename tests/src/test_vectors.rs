@@ -1,7 +1,5 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
-use std::{fs::read, vec::Vec, boxed::Box};
-use molecule::lazy_reader::{Cursor, Error as MoleculeError, Read};
 use ckb_did_plc_utils::{
     base32::{self, Alphabet},
     base64::{
@@ -15,9 +13,14 @@ use ckb_did_plc_utils::{
         utils::{BufWriter, SliceReader},
     },
     error::Error,
+    operation::{
+        parse_local_id, validate_2_operations, validate_genesis_operation,
+        validate_operation_history,
+    },
     reader::validate_cbor_format,
-    operation::{validate_2_operations, validate_genesis_operation, validate_operation_history, parse_local_id},
 };
+use molecule::lazy_reader::{Cursor, Error as MoleculeError, Read};
+use std::{boxed::Box, fs::read, vec::Vec};
 
 fn test_one_vector(prev_file: &str, cur_file: &str, rotation_key_index: usize) {
     let prev_path = get_test_vector_path(prev_file);
@@ -83,7 +86,6 @@ fn test_vectors_6_7() {
     let result = validate_2_operations(&prev_buf, &cur_buf, 0);
     assert!(result.is_err());
 }
-
 #[test]
 fn test_vector_legacy_1_2() {
     test_one_vector(
@@ -216,7 +218,6 @@ fn test_vectors_1_2_wrong_sig() {
     let result = validate_2_operations(&prev_buf, &cur_buf, 0);
     assert!(result.is_err());
 }
-
 #[test]
 fn test_vectors_1_2_wrong_cid() {
     let prev_path = get_test_vector_path("1-did-creation.cbor");
@@ -257,19 +258,15 @@ fn test_vector_1_2_wrong_operation_content() {
     let result = validate_2_operations(&prev_buf, &cur_buf, 0);
     assert!(matches!(result, Err(Error::VerifySignatureFailed)));
 }
-
-
 #[test]
 fn test_not_genesis_operation() {
     //只有真正的创世操作（prev 为 null）才能通过验证
-    let non_genesis_path = get_test_vector_path("2-update-handle.cbor");  // 这是一个带有 prev 的更新操作
+    let non_genesis_path = get_test_vector_path("2-update-handle.cbor"); // 这是一个带有 prev 的更新操作
     let buf = read(&non_genesis_path).expect("Failed to read file");
-    let binary_did = vec![0u8; 15];  // 任意 DID，实际应匹配
+    let binary_did = vec![0u8; 15]; // 任意 DID，实际应匹配
     let result = validate_genesis_operation(&buf, &binary_did, 0);
     assert!(matches!(result, Err(Error::NotGenesisOperation)));
 }
-
-
 struct MockReader {
     total_size: usize,
     data: Vec<u8>,
@@ -288,19 +285,28 @@ impl Read for MockReader {
 
 #[test]
 fn test_molecule_error_invalid_offset() {
-    let reader = MockReader { total_size: 10, data: vec![0u8; 10] };
+    let reader = MockReader {
+        total_size: 10,
+        data: vec![0u8; 10],
+    };
     let mut buf = [0u8; 5];
     let result = reader.read(&mut buf, 15);
     assert!(matches!(result, Err(MoleculeError::OutOfBound(_, _))));
     let wrapped_error = Error::from(result.unwrap_err());
     println!("{:?}", wrapped_error);
-    assert!(matches!(wrapped_error, Error::MoleculeError(MoleculeError::OutOfBound(_, _))));
+    assert!(matches!(
+        wrapped_error,
+        Error::MoleculeError(MoleculeError::OutOfBound(_, _))
+    ));
 }
 
 #[test]
 fn test_molecule_error_empty_buffer() {
     // 空缓冲区
-    let reader = MockReader { total_size: 0, data: vec![] };
+    let reader = MockReader {
+        total_size: 0,
+        data: vec![],
+    };
     let mut buf = [0u8; 1];
     let result = reader.read(&mut buf, 0);
     assert!(matches!(result, Err(MoleculeError::OutOfBound(_, _))));
@@ -315,15 +321,23 @@ fn test_utils_error_invalid_history() {
     let msg = vec![];
     let final_sig = vec![];
 
-    let result = validate_operation_history(&binary_did, history, rotation_key_indices, &msg, &final_sig);
+    let result =
+        validate_operation_history(&binary_did, history, rotation_key_indices, &msg, &final_sig);
 
     // 步骤2: 验证返回 UtilsError::InvalidHistory
     assert!(matches!(result, Err(Error::InvalidHistory)));
 
     // 额外测试: 历史长度与索引不匹配
-    let history = vec![Cursor::new(0, Box::new(MockReader { total_size: 0, data: vec![] }))];
-    let rotation_key_indices = vec![0];  // 长度应为 history.len() + 1 = 2
-    let result2 = validate_operation_history(&binary_did, history, rotation_key_indices, &msg, &final_sig);
+    let history = vec![Cursor::new(
+        0,
+        Box::new(MockReader {
+            total_size: 0,
+            data: vec![],
+        }),
+    )];
+    let rotation_key_indices = vec![0]; // 长度应为 history.len() + 1 = 2
+    let result2 =
+        validate_operation_history(&binary_did, history, rotation_key_indices, &msg, &final_sig);
     assert!(matches!(result2, Err(Error::InvalidHistory)));
 }
 
@@ -332,7 +346,13 @@ fn test_utils_error_invalid_cbor() {
     // 创建一个无效的 CBOR 数据 Cursor
     let invalid_cbor_data: Vec<u8> = vec![0x82]; // 无效 CBOR: 期望2个元素的数组但无内容
     let total_size = invalid_cbor_data.len();
-    let cursor = Cursor::new(total_size, Box::new(MockReader { total_size, data: invalid_cbor_data }));
+    let cursor = Cursor::new(
+        total_size,
+        Box::new(MockReader {
+            total_size,
+            data: invalid_cbor_data,
+        }),
+    );
 
     let result = validate_cbor_format(cursor);
 
@@ -372,14 +392,20 @@ fn test_utils_error_tombstone_in_history() {
         let path = get_test_vector_path(file);
         let buf = read(&path).unwrap_or_else(|_| panic!("Failed to read {}", path));
         let total_size = buf.len();
-        history.push(Cursor::new(total_size, Box::new(MockReader { total_size, data: buf })));
+        history.push(Cursor::new(
+            total_size,
+            Box::new(MockReader {
+                total_size,
+                data: buf,
+            }),
+        ));
     }
     let rotation_key_indices: Vec<usize> = vec![0, 0, 0, 0, 0, 1, 0, 0];
     let msg = vec![0u8; 32];
     let final_sig = vec![0u8; 65];
 
-    let result = validate_operation_history(&binary_did, history, rotation_key_indices, &msg, &final_sig);
+    let result =
+        validate_operation_history(&binary_did, history, rotation_key_indices, &msg, &final_sig);
 
     assert!(result.is_err());
 }
-
