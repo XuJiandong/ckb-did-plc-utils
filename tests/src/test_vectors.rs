@@ -14,13 +14,14 @@ use ckb_did_plc_utils::{
     },
     error::Error,
     operation::{
-        parse_local_id, validate_2_operations, validate_genesis_operation,
+        Operation, parse_local_id, validate_2_operations, validate_genesis_operation,
         validate_operation_history,
     },
     reader::validate_cbor_format,
 };
 use molecule::lazy_reader::{Cursor, Error as MoleculeError, Read};
 use std::{boxed::Box, fs::read, vec::Vec};
+use ckb_did_plc_utils::pubkey::decode_base58btc;
 
 fn test_one_vector(prev_file: &str, cur_file: &str, rotation_key_index: usize) {
     let prev_path = get_test_vector_path(prev_file);
@@ -408,4 +409,373 @@ fn test_utils_error_tombstone_in_history() {
         validate_operation_history(&binary_did, history, rotation_key_indices, &msg, &final_sig);
 
     assert!(result.is_err());
+}
+
+pub fn set_rotation_keys_to_string(buf: &[u8]) -> Vec<u8> {
+    let mut reader = SliceReader::new(buf);
+    let raw = Value::decode(&mut reader).unwrap();
+
+    // rotationKeys: Array(...)  ->  "not-an-array"
+    let updated = match raw {
+        Value::Map(map) => {
+            let new_map = map
+                .into_iter()
+                .map(|(key, value)| {
+                    if key == Value::Text("rotationKeys".to_string()) {
+                        (key, Value::Text("not-an-array".to_string()))
+                    } else {
+                        (key, value)
+                    }
+                })
+                .collect();
+            Value::Map(new_map)
+        }
+        _ => raw,
+    };
+
+    let mut writer = BufWriter::new(Vec::new());
+    updated.encode(&mut writer).unwrap();
+    writer.into_inner()
+}
+
+pub fn set_prev_field(buf: &[u8], new_prev: &str) -> Vec<u8> {
+    let mut reader = SliceReader::new(buf);
+    let raw = Value::decode(&mut reader).unwrap();
+
+    // prev: <old>  ->  prev: <new_prev>
+    let updated = match raw {
+        Value::Map(map) => {
+            let new_map = map
+                .into_iter()
+                .map(|(key, value)| {
+                    if key == Value::Text("prev".to_string()) {
+                        (key, Value::Text(new_prev.to_string()))
+                    } else {
+                        (key, value)
+                    }
+                })
+                .collect();
+            Value::Map(new_map)
+        }
+        _ => raw,
+    };
+
+    let mut writer = BufWriter::new(Vec::new());
+    updated.encode(&mut writer).unwrap();
+    writer.into_inner()
+}
+
+pub fn replace_first_rotation_key(buf: &[u8], new_key: &str) -> Vec<u8> {
+    let mut reader = SliceReader::new(buf);
+    let raw = Value::decode(&mut reader).unwrap();
+
+    let updated = match raw {
+        Value::Map(map) => {
+            let new_map = map
+                .into_iter()
+                .map(|(k, v)| {
+                    if k == Value::Text("rotationKeys".to_string()) {
+                        if let Value::Array(mut arr) = v {
+                            if !arr.is_empty() {
+                                arr[0] = Value::Text(new_key.to_string());
+                            }
+                            (k, Value::Array(arr))
+                        } else {
+                            (k, v)
+                        }
+                    } else {
+                        (k, v)
+                    }
+                })
+                .collect();
+            Value::Map(new_map)
+        }
+        _ => raw,
+    };
+
+    let mut w = BufWriter::new(Vec::new());
+    updated.encode(&mut w).unwrap();
+    w.into_inner()
+}
+
+fn did_key_from_bytes(bytes: &[u8]) -> String {
+    let encoded = multibase::encode(multibase::Base::Base58Btc, bytes);
+    format!("did:key:{}", encoded)
+}
+
+#[test]
+fn test_rotation_keys_decode_error() {
+    let prev = read(get_test_vector_path("1-did-creation.cbor")).unwrap();
+    let cur = read(get_test_vector_path("2-update-handle.cbor")).unwrap();
+
+    let prev_bad = set_rotation_keys_to_string(&prev);
+    let new_cid = {
+        let op = Operation::from_slice(&prev_bad).expect("decode prev_bad");
+        op.generate_cid().expect("cid")
+    };
+    let cur_patched = set_prev_field(&cur, &new_cid);
+    let res = validate_2_operations(&prev_bad, &cur_patched, 0);
+    assert!(matches!(res, Err(Error::RotationKeysDecodeError)));
+}
+
+#[test]
+fn test_invalid_key() {
+    let prev = read(get_test_vector_path("1-did-creation.cbor")).unwrap();
+    let cur = read(get_test_vector_path("2-update-handle.cbor")).unwrap();
+
+    {
+        let prev_bad = set_rotation_keys_to_string(&prev);
+        let res = validate_2_operations(&prev_bad, &cur, 0);
+        eprintln!("[case0] expect InvalidPrev -> got: {res:?}");
+        assert!(matches!(res, Err(Error::InvalidPrev)));
+    }
+
+    // Helper to run a case that expects InvalidKey:
+    let run_invalid_key_case = |label: &str, prev_bad: Vec<u8>| {
+        // Recompute CID for modified prev
+        let new_cid = Operation::from_slice(&prev_bad)
+            .unwrap()
+            .generate_cid()
+            .unwrap();
+        // Patch cur.prev to pass the chain check
+        let cur_patched = set_prev_field(&cur, &new_cid);
+        // Now the pipeline can reach key parsing / verification parts
+        let res = validate_2_operations(&prev_bad, &cur_patched, 0);
+        eprintln!("[{label}] expect InvalidKey -> got: {res:?}");
+        assert!(matches!(res, Err(Error::InvalidKey)));
+    };
+
+    {
+        let bad_key = "did:key:ffooo"; // bad multibase prefix
+        let prev_bad = replace_first_rotation_key(&prev, bad_key);
+        run_invalid_key_case("case1_not_base58btc_prefix", prev_bad);
+    }
+
+    {
+        let bad_key = "did:pkh:zabc"; // wrong DID method
+        let prev_bad = replace_first_rotation_key(&prev, bad_key);
+        run_invalid_key_case("case2_not_did_key_prefix", prev_bad);
+    }
+
+    {
+        let mut raw = vec![0x00, 0x00]; // invalid multicodec tag
+        raw.extend(std::iter::repeat(0x42).take(33)); // 33 bytes payload just to pass len check
+        let bad_key = did_key_from_bytes(&raw);
+        let prev_bad = replace_first_rotation_key(&prev, &bad_key);
+        run_invalid_key_case("case3_wrong_multicodec_tag", prev_bad);
+    }
+
+    {
+        let mut raw = vec![0xE7, 0x01]; // secp256k1 tag
+        raw.extend([0x03; 32]); // only 32 bytes, should be 33
+        let bad_key = did_key_from_bytes(&raw);
+        let prev_bad = replace_first_rotation_key(&prev, &bad_key);
+        run_invalid_key_case("case4_wrong_length", prev_bad);
+    }
+
+    // {
+    //     let mut raw = vec![0xE7, 0x01]; // secp256k1 tag
+    //     raw.push(0x02); // compressed prefix
+    //     raw.extend([0u8; 32]); // invalid X (all zeros) -> invalid curve point
+    //     let bad_key = did_key_from_bytes(&raw);
+    //     let prev_bad = replace_first_rotation_key(&prev, &bad_key);
+    //     run_invalid_key_case("case5_not_on_curve_verify_stage", prev_bad);
+    // }
+
+    {
+        // Case6: Valid key round-trip via did_key_from_bytes (control case)
+        // 1) extract original did:key
+        let mut reader = SliceReader::new(&prev);
+        let root = Value::decode(&mut reader).unwrap();
+        let mut orig_key = String::new();
+        if let Value::Map(map) = root {
+            for (k, v) in map {
+                if k == Value::Text("rotationKeys".to_string()) {
+                    if let Value::Array(arr) = v {
+                        if let Value::Text(s) = &arr[0] {
+                            orig_key = s.clone();
+                        }
+                    }
+                }
+            }
+        }
+        assert!(
+            orig_key.starts_with("did:key:"),
+            "[case6_valid_key] invalid format"
+        );
+
+        // 2) decode base58btc correctly (NO extra 'z')
+        let zpart = &orig_key[8..]; // "z...."
+        let raw_bytes = decode_base58btc(zpart).expect("decode_base58btc");
+
+        assert_eq!(raw_bytes.len(), 35, "[case6_valid_key] unexpected length");
+        assert!(
+            (raw_bytes[0] == 0xE7 && raw_bytes[1] == 0x01) || // secp256k1
+                (raw_bytes[0] == 0x80 && raw_bytes[1] == 0x24), // secp256r1
+            "[case6_valid_key] unexpected multicodec tag: {:02x} {:02x}",
+            raw_bytes[0],
+            raw_bytes[1]
+        );
+
+        // 3) round-trip encode and compare
+        let roundtrip_key = did_key_from_bytes(&raw_bytes);
+        assert_eq!(
+            roundtrip_key, orig_key,
+            "[case6_valid_key] round-trip mismatch: {roundtrip_key} != {orig_key}"
+        );
+
+        // 4) replace + patch + validate should be Ok(())
+        let prev_good = replace_first_rotation_key(&prev, &roundtrip_key);
+        let new_cid = Operation::from_slice(&prev_good)
+            .unwrap()
+            .generate_cid()
+            .unwrap();
+        let cur_patched = set_prev_field(&cur, &new_cid);
+
+        let res = validate_2_operations(&prev_good, &cur_patched, 0);
+        eprintln!("[case6_valid_key_roundtrip] expect Ok(()) -> got: {res:?}");
+        assert!(res.is_ok());
+    }
+}
+
+#[test]
+fn test_invalid_key_index() {
+    let prev = read(get_test_vector_path("1-did-creation.cbor")).unwrap();
+    let cur = read(get_test_vector_path("2-update-handle.cbor")).unwrap();
+
+    let res = validate_2_operations(&prev, &cur, 99);
+    assert!(matches!(res, Err(Error::InvalidKeyIndex)));
+}
+
+#[test]
+fn test_invalid_signature() {
+    use ckb_did_plc_utils::{
+        cbor4ii::core::{
+            Value,
+            dec::Decode,
+            enc::Encode,
+            utils::{BufWriter, SliceReader},
+        },
+        error::Error,
+        operation::validate_2_operations,
+    };
+    use std::fs::read;
+
+    let prev = read(get_test_vector_path("1-did-creation.cbor")).unwrap();
+    let cur = read(get_test_vector_path("2-update-handle.cbor")).unwrap();
+
+    // helper: set top-level "sig" as Text to a specific string
+    let set_sig_text = |buf: &[u8], s: &str| {
+        let mut r = SliceReader::new(buf);
+        let mut root = Value::decode(&mut r).unwrap();
+        if let Value::Map(ref mut pairs) = root {
+            for (k, v) in pairs.iter_mut() {
+                if *k == Value::Text("sig".into()) {
+                    *v = Value::Text(s.to_string());
+                }
+            }
+        }
+        let mut w = BufWriter::new(Vec::new());
+        root.encode(&mut w).unwrap();
+        w.into_inner()
+    };
+
+    // -------- Case 1: non-base64url characters ('!' and '*') -> base64url decode fails -> InvalidSignature
+    {
+        let cur_bad = set_sig_text(&cur, "not-base64url!!**");
+        let res = validate_2_operations(&prev, &cur_bad, 0);
+        eprintln!("[Case 1] expect InvalidSignature -> got: {res:?}");
+        assert!(matches!(res, Err(Error::InvalidSignature)));
+    }
+
+    // -------- Case 2: valid-looking length but still not base64url (e.g., has a space) -> InvalidSignature
+    {
+        let cur_bad = set_sig_text(&cur, "abcd efgh"); // space is invalid for base64url
+        let res = validate_2_operations(&prev, &cur_bad, 0);
+        eprintln!("[Case 2] expect InvalidSignature -> got: {res:?}");
+        assert!(matches!(res, Err(Error::InvalidSignature)));
+    }
+}
+
+#[test]
+fn test_invalid_signature_padding() {
+    use ckb_did_plc_utils::cbor4ii::core::{
+        Value,
+        dec::Decode,
+        enc::Encode,
+        utils::{BufWriter, SliceReader},
+    };
+    use ckb_did_plc_utils::{error::Error, operation::validate_2_operations};
+    use std::fs::read;
+
+    let prev = read(get_test_vector_path("1-did-creation.cbor")).unwrap();
+    let cur = read(get_test_vector_path("2-update-handle.cbor")).unwrap();
+
+    // ---- read original sig text from `cur` (must be URL_SAFE_NO_PAD, meaning no '=') ----
+    let orig_sig: String = 'find_sig: {
+        let mut r = SliceReader::new(&cur);
+        let root = Value::decode(&mut r).unwrap();
+        if let Value::Map(map) = root {
+            for (k, v) in map {
+                if let Value::Text(k_str) = k {
+                    if k_str == "sig" {
+                        if let Value::Text(s) = v {
+                            break 'find_sig s;
+                        } else {
+                            panic!("`sig` is not Text");
+                        }
+                    }
+                }
+            }
+            panic!("`sig` field not found");
+        } else {
+            panic!("root is not a Map");
+        }
+    };
+    assert!(!orig_sig.ends_with('='), "fixture sig already has padding?");
+
+    // =============== Case 1: append a single '=' ===============
+    {
+        // make a new cur with sig = orig_sig + "="
+        let cur_padded = {
+            let mut r = SliceReader::new(&cur);
+            let mut root = Value::decode(&mut r).unwrap();
+            if let Value::Map(ref mut pairs) = root {
+                for (k, v) in pairs.iter_mut() {
+                    if *k == Value::Text("sig".into()) {
+                        *v = Value::Text(format!("{orig_sig}="));
+                    }
+                }
+            }
+            let mut w = BufWriter::new(Vec::new());
+            root.encode(&mut w).unwrap();
+            w.into_inner()
+        };
+
+        let res = validate_2_operations(&prev, &cur_padded, 0);
+        eprintln!("[Case 1: sig ends with '='] expect InvalidSignaturePadding -> got: {res:?}");
+        assert!(matches!(res, Err(Error::InvalidSignaturePadding)));
+    }
+
+    // =============== Case 2: append '==' ===============
+    {
+        let cur_padded2 = {
+            let mut r = SliceReader::new(&cur);
+            let mut root = Value::decode(&mut r).unwrap();
+            if let Value::Map(ref mut pairs) = root {
+                for (k, v) in pairs.iter_mut() {
+                    if *k == Value::Text("sig".into()) {
+                        *v = Value::Text(format!("{orig_sig}=="));
+                    }
+                }
+            }
+            let mut w = BufWriter::new(Vec::new());
+            root.encode(&mut w).unwrap();
+            w.into_inner()
+        };
+
+        let res = validate_2_operations(&prev, &cur_padded2, 0);
+        eprintln!("[Case 2: sig ends with '=='] expect InvalidSignaturePadding -> got: {res:?}");
+        assert!(matches!(res, Err(Error::InvalidSignaturePadding)));
+    }
 }
