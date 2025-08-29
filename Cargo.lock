@@ -107,6 +107,8 @@ name = "ckb-did-plc-utils-tests"
 version = "0.1.0"
 dependencies = [
  "ckb-did-plc-utils",
+ "molecule 0.9.1",
+ "multibase",
 ]
 
 [[package]]

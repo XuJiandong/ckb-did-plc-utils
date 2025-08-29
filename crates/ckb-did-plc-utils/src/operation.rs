@@ -33,12 +33,12 @@ pub fn parse_local_id(id: &[u8]) -> Result<Vec<u8>, Error> {
     }
 }
 
-pub(crate) struct Operation {
+pub struct Operation {
     raw: Vec<(Value, Value)>,
 }
 
 impl Operation {
-    pub(crate) fn from_slice(buf: &[u8]) -> Result<Self, Error> {
+    pub fn from_slice(buf: &[u8]) -> Result<Self, Error> {
         let mut reader = SliceReader::new(buf);
         let raw_value = Value::decode(&mut reader).map_err(|_| Error::InvalidOperation)?;
 
@@ -211,7 +211,7 @@ impl Operation {
         }
     }
 
-    pub(crate) fn generate_cid(&self) -> Result<String, Error> {
+    pub fn generate_cid(&self) -> Result<String, Error> {
         let mut writer = BufWriter::new(Vec::new());
 
         let map_value = types::Map(self.raw.as_slice());
