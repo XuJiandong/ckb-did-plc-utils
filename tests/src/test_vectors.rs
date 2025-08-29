@@ -17,11 +17,11 @@ use ckb_did_plc_utils::{
         Operation, parse_local_id, validate_2_operations, validate_genesis_operation,
         validate_operation_history,
     },
+    pubkey::decode_base58btc,
     reader::validate_cbor_format,
 };
 use molecule::lazy_reader::{Cursor, Error as MoleculeError, Read};
 use std::{boxed::Box, fs::read, vec::Vec};
-use ckb_did_plc_utils::pubkey::decode_base58btc;
 
 fn test_one_vector(prev_file: &str, cur_file: &str, rotation_key_index: usize) {
     let prev_path = get_test_vector_path(prev_file);
